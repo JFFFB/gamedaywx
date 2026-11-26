@@ -1,0 +1,22 @@
+{
+  "id": "./",
+  "name": "GameDayWX — NCAA Football Stadium Weather",
+  "short_name": "GameDayWX",
+  "description": "Mobile-first NCAA football stadium forecasts, kickoff conditions, and quarter-by-quarter game-day weather.",
+  "lang": "en-US",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#050a14",
+  "theme_color": "#070e1c",
+  "categories": ["weather", "sports"],
+  "icons": [
+    { "src": "./icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "./icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "./icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "Pinned stadiums", "short_name": "Pinned", "url": "./?view=pinned", "icons": [{ "src": "./icon-192.png", "sizes": "192x192" }] },
+    { "name": "Worst weather first", "short_name": "Worst WX", "url": "./?sort=worst", "icons": [{ "src": "./icon-192.png", "sizes": "192x192" }] }
+  ]
+}

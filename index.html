@@ -1,0 +1,1801 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>GAMEDAYWX — Live Stadium & ESPN Kickoff Weather</title>
+
+  <!-- PWA Manifest & Mobile Theme -->
+  <link rel="manifest" href="./manifest.json" />
+  <meta name="theme-color" content="#070e1c" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="GameDayWX" />
+
+  <!-- Icons -->
+  <link rel="icon" type="image/png" sizes="192x192" href="./icon-192.png" />
+  <link rel="icon" type="image/png" sizes="512x512" href="./icon-512.png" />
+  <link rel="apple-touch-icon" sizes="180x180" href="./icon-180.png" />
+
+  <style>
+    :root {
+      --bg-page: #050a14;
+      --bg-card: #081020;
+      --bg-panel: #0b162c;
+      --bg-pill: #0d182e;
+      --border-subtle: rgba(56, 114, 196, 0.25);
+      --border-active: #1d74f5;
+      --border-amber: rgba(217, 130, 32, 0.48);
+      --bg-amber: rgba(66, 40, 12, 0.34);
+      --blue-primary: #0f62fe;
+      --blue-pill: #1357c9;
+      --green-pill-bg: rgba(16, 185, 129, 0.12);
+      --green-pill-border: rgba(16, 185, 129, 0.45);
+      --green-text: #34d399;
+      --amber-text: #fbbf24;
+      --text-main: #f8fafc;
+      --text-muted: #8ea2c0;
+      --text-dim: #8a9ab4;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Inter, sans-serif;
+      background: var(--bg-page);
+      color: var(--text-main);
+      min-height: 100dvh;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* PWA Banners */
+    .pwa-banner {
+      display: none;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 10px 16px;
+      font-size: 0.85rem;
+      background: #0d1930;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .pwa-banner.show {
+      display: flex;
+    }
+
+    .pwa-banner.offline {
+      background: #331905;
+      border-bottom-color: #d97706;
+      color: #fde68a;
+    }
+
+    .pwa-banner.update {
+      background: #052e22;
+      border-bottom-color: #10b981;
+      color: #a7f3d0;
+    }
+
+    .pwa-btn {
+      background: var(--blue-primary);
+      color: #fff;
+      border: 0;
+      border-radius: 8px;
+      padding: 6px 12px;
+      font-size: 0.8rem;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    /* Container */
+    .shell {
+      max-width: 1120px;
+      margin: 0 auto;
+      padding: 16px 16px 40px;
+    }
+
+    /* Top Header */
+    .top-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+
+    .brand-group {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .brand-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 11px;
+      background: linear-gradient(145deg, #1366e8, #0a44a8);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 14px rgba(15, 98, 254, 0.35);
+      overflow: hidden;
+      flex-shrink: 0;
+    }
+
+    .brand-icon img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .brand-title-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .brand-name {
+      font-size: 1.25rem;
+      font-weight: 900;
+      letter-spacing: 0.03em;
+      color: #ffffff;
+    }
+
+    .brand-tag {
+      font-size: 0.68rem;
+      font-weight: 800;
+      letter-spacing: 0.05em;
+      padding: 3px 8px;
+      border-radius: 6px;
+      background: rgba(19, 87, 201, 0.25);
+      border: 1px solid rgba(59, 130, 246, 0.45);
+      color: #93c5fd;
+    }
+
+    .brand-sub {
+      font-size: 0.82rem;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    .compare-header-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      background: #0a1529;
+      color: #e2e8f0;
+      border: 1px solid rgba(59, 130, 246, 0.45);
+      border-radius: 10px;
+      padding: 9px 14px;
+      font-size: 0.85rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .compare-header-btn:hover,
+    .compare-header-btn.active {
+      background: var(--blue-primary);
+      border-color: #60a5fa;
+      color: #fff;
+    }
+
+    /* Search Input */
+    .search-wrap {
+      position: relative;
+      margin-bottom: 12px;
+    }
+
+    .search-icon {
+      position: absolute;
+      left: 14px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--text-dim);
+      pointer-events: none;
+      font-size: 0.95rem;
+    }
+
+    .search-input {
+      width: 100%;
+      background: #091224;
+      border: 1px solid var(--border-subtle);
+      border-radius: 12px;
+      padding: 12px 14px 12px 38px;
+      color: var(--text-main);
+      font-size: 0.9rem;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+
+    .search-input::placeholder {
+      color: var(--text-dim);
+    }
+
+    .search-input:focus {
+      border-color: var(--border-active);
+    }
+
+    /* Week + Kickoff Filter Row */
+    .filter-strip {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 10px;
+    }
+
+    .week-track {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      background: #091224;
+      border: 1px solid var(--border-subtle);
+      border-radius: 12px;
+      padding: 4px;
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
+
+    .week-track::-webkit-scrollbar {
+      display: none;
+    }
+
+    .wk-pill {
+      background: transparent;
+      border: 0;
+      color: #cbd5e1;
+      font-size: 0.78rem;
+      font-weight: 700;
+      padding: 7px 11px;
+      border-radius: 8px;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.15s;
+    }
+
+    .wk-pill:hover {
+      color: #fff;
+      background: rgba(255, 255, 255, 0.06);
+    }
+
+    .wk-pill.active {
+      background: var(--blue-primary);
+      color: #ffffff;
+      box-shadow: 0 2px 8px rgba(15, 98, 254, 0.45);
+    }
+
+    .time-filter-pill {
+      background: #091224;
+      border: 1px solid var(--border-subtle);
+      color: #cbd5e1;
+      font-size: 0.78rem;
+      font-weight: 700;
+      padding: 9px 13px;
+      border-radius: 10px;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    .time-filter-pill.active {
+      border-color: var(--border-active);
+      background: rgba(15, 98, 254, 0.16);
+      color: #ffffff;
+    }
+
+    .time-filter-pill.tbd.active,
+    .time-filter-pill.tbd {
+      color: var(--amber-text);
+    }
+
+    .time-filter-pill.tbd.active {
+      border-color: var(--amber-text);
+      background: rgba(245, 158, 11, 0.14);
+    }
+
+    /* Conference Pills Row */
+    .conf-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 16px;
+    }
+
+    .conf-pill {
+      background: #091224;
+      border: 1px solid var(--border-subtle);
+      color: #cbd5e1;
+      font-size: 0.8rem;
+      font-weight: 700;
+      padding: 7px 14px;
+      border-radius: 999px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .conf-pill:hover {
+      border-color: rgba(96, 165, 250, 0.5);
+      color: #fff;
+    }
+
+    .conf-pill.active {
+      background: rgba(15, 98, 254, 0.24);
+      border-color: #3b82f6;
+      color: #ffffff;
+    }
+
+    /* Sync Summary Row */
+    .sync-summary-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+
+    .sync-left {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .games-count {
+      font-size: 0.92rem;
+      font-weight: 800;
+      color: #f8fafc;
+      margin-right: 4px;
+    }
+
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.74rem;
+      font-weight: 700;
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: var(--green-pill-bg);
+      border: 1px solid var(--green-pill-border);
+      color: var(--green-text);
+    }
+
+    .status-badge.warn {
+      background: rgba(245, 158, 11, 0.12);
+      border-color: rgba(245, 158, 11, 0.45);
+      color: var(--amber-text);
+    }
+
+    .status-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: currentColor;
+    }
+
+    .refresh-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: #09152b;
+      border: 1px solid rgba(59, 130, 246, 0.4);
+      color: #e2e8f0;
+      border-radius: 10px;
+      padding: 7px 13px;
+      font-size: 0.8rem;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .refresh-btn:hover {
+      border-color: #60a5fa;
+      color: #fff;
+    }
+
+    /* Compare Drawer */
+    .compare-drawer {
+      display: none;
+      background: #081224;
+      border: 1px solid #2563eb;
+      border-radius: 14px;
+      padding: 14px;
+      margin-bottom: 18px;
+    }
+
+    .compare-drawer.show {
+      display: block;
+    }
+
+    .compare-drawer-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 10px;
+      font-size: 0.85rem;
+    }
+
+    .compare-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 10px;
+    }
+
+    .compare-item {
+      background: #0b1830;
+      border: 1px solid var(--border-subtle);
+      border-radius: 10px;
+      padding: 10px;
+      font-size: 0.8rem;
+    }
+
+    /* Section Header */
+    .section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin: 18px 0 10px;
+    }
+
+    .section-title {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.76rem;
+      font-weight: 800;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--amber-text);
+    }
+
+    .section-title.all {
+      color: #93c5fd;
+    }
+
+    .section-hint {
+      font-size: 0.76rem;
+      color: var(--text-muted);
+    }
+
+    /* Cards Grid */
+    .cards-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+      gap: 14px;
+    }
+
+    /* Stadium Weather Card */
+    .stadium-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: 16px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      transition: border-color 0.15s, transform 0.15s;
+    }
+
+    .stadium-card.pinned {
+      border-color: rgba(37, 99, 235, 0.55);
+      box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.18);
+    }
+
+    .card-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .venue-meta-top {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 4px;
+    }
+
+    .conf-badge {
+      font-size: 0.66rem;
+      font-weight: 800;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      padding: 3px 7px;
+      border-radius: 5px;
+      background: rgba(19, 87, 201, 0.25);
+      border: 1px solid rgba(59, 130, 246, 0.45);
+      color: #60a5fa;
+    }
+
+    .city-text {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+    }
+
+    .stadium-name {
+      font-size: 1.08rem;
+      font-weight: 800;
+      color: #ffffff;
+      line-height: 1.25;
+    }
+
+    .home-team-sub {
+      font-size: 0.82rem;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    .card-right-controls {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-shrink: 0;
+    }
+
+    .now-box {
+      background: #0c172c;
+      border: 1px solid var(--border-subtle);
+      border-radius: 10px;
+      padding: 5px 9px;
+      text-align: right;
+      min-width: 68px;
+    }
+
+    .now-label {
+      font-size: 0.6rem;
+      font-weight: 800;
+      letter-spacing: 0.06em;
+      color: var(--text-dim);
+      text-transform: uppercase;
+    }
+
+    .now-val {
+      font-size: 0.92rem;
+      font-weight: 800;
+      color: #f8fafc;
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 4px;
+    }
+
+    .pin-btn,
+    .cmp-mini-btn {
+      width: 32px;
+      height: 32px;
+      border-radius: 9px;
+      background: #0c172c;
+      border: 1px solid var(--border-subtle);
+      color: var(--text-muted);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.9rem;
+      cursor: pointer;
+    }
+
+    .pin-btn.active {
+      color: var(--amber-text);
+      border-color: rgba(251, 191, 36, 0.5);
+      background: rgba(251, 191, 36, 0.1);
+    }
+
+    .cmp-mini-btn.active {
+      color: #60a5fa;
+      border-color: #3b82f6;
+      background: rgba(59, 130, 246, 0.16);
+    }
+
+    /* Matchup Banner Box */
+    .matchup-box {
+      background: #0b162b;
+      border: 1px solid rgba(56, 114, 196, 0.28);
+      border-radius: 12px;
+      padding: 10px 12px;
+    }
+
+    .matchup-date {
+      font-size: 0.68rem;
+      font-weight: 800;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      color: #60a5fa;
+      margin-bottom: 4px;
+    }
+
+    .matchup-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .matchup-title {
+      font-size: 0.92rem;
+      font-weight: 800;
+      color: #ffffff;
+    }
+
+    .tv-pill {
+      font-size: 0.72rem;
+      font-weight: 800;
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: var(--blue-primary);
+      color: #ffffff;
+      white-space: nowrap;
+    }
+
+    /* Kickoff vs Worst In-Game Split */
+    .dual-wx-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .wx-panel {
+      background: #0a1529;
+      border: 1px solid rgba(56, 114, 196, 0.35);
+      border-radius: 12px;
+      padding: 10px 11px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .wx-panel.worst {
+      background: var(--bg-amber);
+      border-color: var(--border-amber);
+    }
+
+    .wx-panel-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 6px;
+      font-size: 0.66rem;
+      font-weight: 800;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: #60a5fa;
+    }
+
+    .wx-panel.worst .wx-panel-head {
+      color: var(--amber-text);
+    }
+
+    .wx-panel-time {
+      color: var(--text-muted);
+      font-weight: 700;
+      text-transform: none;
+      white-space: nowrap;
+    }
+
+    .wx-main-row {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+    }
+
+    .wx-emoji {
+      font-size: 1.45rem;
+      line-height: 1;
+    }
+
+    .wx-temp-big {
+      font-size: 1.25rem;
+      font-weight: 900;
+      color: #ffffff;
+      line-height: 1.1;
+    }
+
+    .wx-cond-sub {
+      font-size: 0.72rem;
+      color: #cbd5e1;
+      margin-top: 2px;
+    }
+
+    .wx-panel-foot {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: #cbd5e1;
+    }
+
+    .wx-panel.worst .wx-panel-foot .precip-val {
+      color: var(--amber-text);
+    }
+
+    /* Quarter-by-Quarter Strip */
+    .qtr-section-label {
+      font-size: 0.66rem;
+      font-weight: 800;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+    }
+
+    .qtr-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 6px;
+    }
+
+    .qtr-box {
+      background: #0a1529;
+      border: 1px solid rgba(56, 114, 196, 0.25);
+      border-radius: 10px;
+      padding: 7px 6px;
+      text-align: center;
+    }
+
+    .qtr-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 0.64rem;
+      font-weight: 800;
+      color: #60a5fa;
+      margin-bottom: 4px;
+    }
+
+    .qtr-top span:last-child {
+      color: var(--text-dim);
+      font-weight: 600;
+    }
+
+    .qtr-mid {
+      font-size: 0.86rem;
+      font-weight: 800;
+      color: #ffffff;
+      margin-bottom: 3px;
+    }
+
+    .qtr-bot {
+      font-size: 0.66rem;
+      color: var(--text-muted);
+      font-weight: 600;
+    }
+
+    .empty-box {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: 14px;
+      padding: 20px;
+      color: var(--text-muted);
+      text-align: center;
+      grid-column: 1 / -1;
+    }
+
+    @media (max-width: 480px) {
+      .cards-grid {
+        grid-template-columns: 1fr;
+      }
+      .qtr-grid {
+        gap: 4px;
+      }
+    }
+
+    /* ---- v2 additions ---- */
+    body { padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
+    :focus-visible { outline: 2px solid #60a5fa; outline-offset: 2px; }
+    button { font-family: inherit; }
+    .wk-pill, .time-filter-pill, .conf-pill, .sort-pill, .refresh-btn, .compare-header-btn, .pwa-btn { min-height: 40px; }
+    .pin-btn, .cmp-mini-btn { min-width: 40px; min-height: 40px; }
+    @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; scroll-behavior: auto !important; } }
+
+    .sync-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+    .sort-row { display: flex; align-items: center; gap: 8px; margin: 8px 0 4px; flex-wrap: wrap; }
+    .sort-label { font-size: 0.72rem; font-weight: 800; letter-spacing: 0.06em; color: var(--text-muted); }
+    .sort-pill { background: #091224; border: 1px solid var(--border-subtle); color: #cbd5e1; font-size: 0.78rem; font-weight: 700; padding: 6px 12px; border-radius: 999px; cursor: pointer; }
+    .sort-pill.active { background: var(--blue-pill); border-color: #60a5fa; color: #fff; }
+    .wx-summary { font-size: 0.82rem; color: var(--amber-text); min-height: 1.2em; margin: 4px 0 10px; }
+
+    .impact-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 2px 0 8px; }
+    .impact { font-size: 0.66rem; font-weight: 800; letter-spacing: 0.06em; padding: 3px 8px; border-radius: 6px; border: 1px solid; display: inline-block; }
+    .impact.low { color: var(--green-text); background: var(--green-pill-bg); border-color: var(--green-pill-border); }
+    .impact.mod { color: var(--amber-text); background: var(--bg-amber); border-color: var(--border-amber); }
+    .impact.high { color: #fca5a5; background: rgba(127, 29, 29, 0.35); border-color: rgba(248, 113, 113, 0.6); }
+    .upd { font-size: 0.7rem; color: var(--text-muted); }
+    .wx-note { font-size: 0.8rem; color: var(--text-muted); padding: 8px 0; }
+
+    .alerts { display: flex; flex-wrap: wrap; gap: 6px; }
+    .alerts:not(:empty) { margin: 8px 0; }
+    .alert-chip { font-size: 0.72rem; font-weight: 800; padding: 4px 9px; border-radius: 6px; color: var(--amber-text); background: var(--bg-amber); border: 1px solid var(--border-amber); }
+    .alert-chip.sev { color: #fecaca; background: rgba(127, 29, 29, 0.45); border-color: rgba(248, 113, 113, 0.7); }
+    .live-chip, .final-chip { font-size: 0.66rem; font-weight: 800; padding: 2px 7px; border-radius: 5px; margin-left: 6px; vertical-align: middle; }
+    .live-chip { color: #fecaca; background: rgba(220, 38, 38, 0.3); }
+    .final-chip { color: var(--text-muted); background: rgba(148, 163, 184, 0.18); }
+
+    .away-pin { margin-top: 8px; background: transparent; border: 1px dashed var(--border-subtle); color: var(--text-muted); font-size: 0.74rem; padding: 5px 10px; border-radius: 8px; cursor: pointer; min-height: 32px; }
+    .away-pin.active { color: var(--amber-text); border-color: var(--border-amber); }
+
+    .details { display: none; margin-top: 10px; }
+    .stadium-card.expanded .details { display: block; }
+    .hourly { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; }
+    .hr-tile { flex: 0 0 auto; min-width: 74px; background: var(--bg-pill); border: 1px solid var(--border-subtle); border-radius: 10px; padding: 8px; display: flex; flex-direction: column; gap: 3px; font-size: 0.8rem; }
+    .hr-tile small { color: var(--text-muted); font-size: 0.68rem; }
+    .detail-line { margin-top: 8px; font-size: 0.76rem; color: var(--text-muted); line-height: 1.5; }
+    .detail-line a { color: #93c5fd; }
+    .details-btn { width: 100%; margin-top: 10px; background: transparent; border: 1px solid var(--border-subtle); color: #93c5fd; font-size: 0.78rem; font-weight: 700; border-radius: 10px; padding: 8px; cursor: pointer; min-height: 40px; }
+    .details-btn .when-open, .stadium-card.expanded .details-btn .when-closed { display: none; }
+    .stadium-card.expanded .details-btn .when-open { display: inline; }
+    .cards-grid > *, .stadium-card, .details, .hourly, .qtr-grid, .dual-wx-grid > * { min-width: 0; }
+    .stadium-card { max-width: 100%; }
+    .stadium-name { overflow-wrap: anywhere; }
+  </style>
+</head>
+<body>
+  <div id="offlineBanner" class="pwa-banner offline" role="status" aria-live="polite">
+    <span>Offline mode — showing cached GameDayWX schedules and forecasts.</span>
+  </div>
+
+  <div id="updateBanner" class="pwa-banner update" role="status" aria-live="polite">
+    <span>A newer version of GameDayWX is ready.</span>
+    <button id="reloadAppBtn" class="pwa-btn" type="button">Reload</button>
+  </div>
+
+  <div class="shell">
+    <!-- Top Header -->
+    <header class="top-bar">
+      <div class="brand-group">
+        <div class="brand-icon">
+          <img src="./icon-192.png" alt="GameDayWX" />
+        </div>
+        <div>
+          <div class="brand-title-row">
+            <span class="brand-name">GAMEDAYWX</span>
+            <span class="brand-tag">ESPN + FBS</span>
+          </div>
+          <div class="brand-sub">Live Stadium &amp; ESPN Kickoff Weather</div>
+        </div>
+      </div>
+
+      <button id="compareHeaderBtn" class="compare-header-btn" type="button">
+        <span>⇄</span>
+        <span id="compareHeaderLabel">Compare</span>
+      </button>
+    </header>
+
+    <!-- Search Bar -->
+    <div class="search-wrap">
+      <span class="search-icon" aria-hidden="true">🔍</span>
+      <input
+        id="searchInput"
+        class="search-input"
+        type="search"
+        placeholder="Search team, opponent, stadium, or city..."
+        aria-label="Search team, opponent, stadium, or city"
+      />
+    </div>
+
+    <!-- Week Pills + Kickoff Time Status Pills -->
+    <div class="filter-strip">
+      <div class="week-track" id="weekTrack" role="tablist" aria-label="Select week">
+      </div>
+
+      <button class="time-filter-pill active" data-timefilter="all" type="button">All</button>
+      <button class="time-filter-pill" data-timefilter="confirmed" type="button">Confirmed Time</button>
+      <button class="time-filter-pill tbd" data-timefilter="tbd" type="button">TBD Kickoffs</button>
+    </div>
+
+    <!-- Conference Filter Pills -->
+    <div class="conf-row" id="confRow">
+      <button class="conf-pill active" data-conf="ALL" type="button">All</button>
+      <button class="conf-pill" data-conf="Big 12" type="button">Big 12</button>
+      <button class="conf-pill" data-conf="SEC" type="button">SEC</button>
+      <button class="conf-pill" data-conf="Big Ten" type="button">Big Ten</button>
+      <button class="conf-pill" data-conf="ACC" type="button">ACC</button>
+      <button class="conf-pill" data-conf="Pac-12" type="button">Pac-12</button>
+      <button class="conf-pill" data-conf="American" type="button">American</button>
+      <button class="conf-pill" data-conf="Sun Belt" type="button">Sun Belt</button>
+      <button class="conf-pill" data-conf="MAC" type="button">MAC</button>
+      <button class="conf-pill" data-conf="C-USA" type="button">C-USA</button>
+      <button class="conf-pill" data-conf="Mountain West" type="button">Mountain West</button>
+      <button class="conf-pill" data-conf="Independent" type="button">Independent</button>
+    </div>
+
+
+    <div class="sort-row" role="group" aria-label="Sort games">
+      <span class="sort-label">SORT</span>
+      <button class="sort-pill active" data-sort="kick" type="button">Kickoff</button>
+      <button class="sort-pill" data-sort="worst" type="button">Worst weather</button>
+    </div>
+    <div id="wxSummary" class="wx-summary" role="status" aria-live="polite"></div>
+
+    <!-- Sync Status & Refresh -->
+    <div class="sync-summary-bar">
+      <div class="sync-left">
+        <span class="games-count" id="gamesCountLabel">0 Games</span>
+        <span class="status-badge" id="espnSyncBadge">
+          <span class="status-dot"></span>
+          <span id="espnSyncText">ESPN Live Synced</span>
+        </span>
+        <span class="status-badge" id="wxSyncBadge">
+          <span class="status-dot"></span>
+          <span id="wxSyncText">Weather Synced</span>
+        </span>
+      </div>
+      <div class="sync-actions">
+        <button id="unitsBtn" class="refresh-btn" type="button" aria-label="Toggle units">°F · mph</button>
+        <button id="refreshBtn" class="refresh-btn" type="button">↻ Refresh</button>
+      </div>
+    </div>
+
+    <!-- Side-by-Side Comparison Drawer -->
+    <section id="compareDrawer" class="compare-drawer" aria-label="Side-by-side stadium comparison">
+      <div class="compare-drawer-head">
+        <strong>Side-by-Side Stadium Comparison (up to 4)</strong>
+        <button id="clearCompareBtn" class="pwa-btn" type="button">Clear</button>
+      </div>
+      <div id="compareGrid" aria-live="polite" class="compare-grid"></div>
+    </section>
+
+    <!-- Pinned Stadiums Section -->
+    <div id="pinnedSection" style="display:none;">
+      <div class="section-header">
+        <span class="section-title">★ PINNED STADIUMS</span>
+        <span class="section-hint">Tap Details for hourly forecast</span>
+      </div>
+      <div id="pinnedGrid" class="cards-grid"></div>
+    </div>
+
+    <!-- All Games Section -->
+    <div id="allSection">
+      <div class="section-header">
+        <span class="section-title all" id="allSectionTitle">ALL WEEK 13 MATCHUPS</span>
+        <span class="section-hint" id="allSectionHint">Local stadium kickoff times</span>
+      </div>
+      <div id="allGrid" class="cards-grid"></div>
+    </div>
+  </div>
+
+  <script>
+(() => {
+'use strict';
+const ESPN = 'https://site.web.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard';
+const FC_URL = 'https://api.open-meteo.com/v1/forecast';
+const ARCH_URL = 'https://archive-api.open-meteo.com/v1/archive';
+const SEASON_YEAR = 2026, WEEK1_SAT = Date.UTC(2026, 8, 5), MAX_WEEK = 14, DAY = 864e5, HOUR = 36e5;
+const H_FC = 'temperature_2m,apparent_temperature,precipitation_probability,precipitation,wind_speed_10m,wind_gusts_10m,wind_direction_10m,weather_code,is_day';
+const H_ARCH = 'temperature_2m,apparent_temperature,precipitation,wind_speed_10m,wind_gusts_10m,wind_direction_10m,weather_code,is_day';
+
+const STADIUM_META = {
+      'BYU Cougars': { conf: 'Big 12', stadium: 'LaVell Edwards Stadium', city: 'Provo, UT', lat: 40.2575, lon: -111.6545, tz: 'America/Denver', roof: 'Open' },
+      'Utah Utes': { conf: 'Big 12', stadium: 'Rice-Eccles Stadium', city: 'Salt Lake City, UT', lat: 40.7599, lon: -111.8488, tz: 'America/Denver', roof: 'Open' },
+      'Iowa State Cyclones': { conf: 'Big 12', stadium: 'Jack Trice Stadium', city: 'Ames, IA', lat: 42.0140, lon: -93.6358, tz: 'America/Chicago', roof: 'Open' },
+      'Kansas State Wildcats': { conf: 'Big 12', stadium: 'Bill Snyder Family Stadium', city: 'Manhattan, KS', lat: 39.2020, lon: -96.5938, tz: 'America/Chicago', roof: 'Open' },
+      'Kansas Jayhawks': { conf: 'Big 12', stadium: 'David Booth Kansas Memorial Stadium', city: 'Lawrence, KS', lat: 38.9635, lon: -95.2463, tz: 'America/Chicago', roof: 'Open' },
+      'Texas Tech Red Raiders': { conf: 'Big 12', stadium: 'Jones AT&T Stadium', city: 'Lubbock, TX', lat: 33.5910, lon: -101.8728, tz: 'America/Chicago', roof: 'Open' },
+      'Baylor Bears': { conf: 'Big 12', stadium: 'McLane Stadium', city: 'Waco, TX', lat: 31.5582, lon: -97.1157, tz: 'America/Chicago', roof: 'Open' },
+      'TCU Horned Frogs': { conf: 'Big 12', stadium: 'Amon G. Carter Stadium', city: 'Fort Worth, TX', lat: 32.7097, lon: -97.3681, tz: 'America/Chicago', roof: 'Open' },
+      'Arizona State Sun Devils': { conf: 'Big 12', stadium: 'Mountain America Stadium', city: 'Tempe, AZ', lat: 33.4264, lon: -111.9326, tz: 'America/Phoenix', roof: 'Open' },
+      'Arizona Wildcats': { conf: 'Big 12', stadium: 'Arizona Stadium', city: 'Tucson, AZ', lat: 32.2288, lon: -110.9488, tz: 'America/Phoenix', roof: 'Open' },
+      'Colorado Buffaloes': { conf: 'Big 12', stadium: 'Folsom Field', city: 'Boulder, CO', lat: 40.0095, lon: -105.2669, tz: 'America/Denver', roof: 'Open' },
+      'Oklahoma State Cowboys': { conf: 'Big 12', stadium: 'Boone Pickens Stadium', city: 'Stillwater, OK', lat: 36.1257, lon: -97.0665, tz: 'America/Chicago', roof: 'Open' },
+      'West Virginia Mountaineers': { conf: 'Big 12', stadium: 'Milan Puskar Stadium', city: 'Morgantown, WV', lat: 39.6503, lon: -79.9552, tz: 'America/New_York', roof: 'Open' },
+      'Cincinnati Bearcats': { conf: 'Big 12', stadium: 'Nippert Stadium', city: 'Cincinnati, OH', lat: 39.1312, lon: -84.5162, tz: 'America/New_York', roof: 'Open' },
+      'UCF Knights': { conf: 'Big 12', stadium: 'FBC Mortgage Stadium', city: 'Orlando, FL', lat: 28.6079, lon: -81.1927, tz: 'America/New_York', roof: 'Open' },
+      'Houston Cougars': { conf: 'Big 12', stadium: 'TDECU Stadium', city: 'Houston, TX', lat: 29.7219, lon: -95.3491, tz: 'America/Chicago', roof: 'Open' },
+
+      'Alabama Crimson Tide': { conf: 'SEC', stadium: 'Bryant-Denny Stadium', city: 'Tuscaloosa, AL', lat: 33.2084, lon: -87.5504, tz: 'America/Chicago', roof: 'Open' },
+      'Texas A&M Aggies': { conf: 'SEC', stadium: 'Kyle Field', city: 'College Station, TX', lat: 30.6102, lon: -96.3404, tz: 'America/Chicago', roof: 'Open' },
+      'Georgia Bulldogs': { conf: 'SEC', stadium: 'Sanford Stadium', city: 'Athens, GA', lat: 33.9498, lon: -83.3734, tz: 'America/New_York', roof: 'Open' },
+      'LSU Tigers': { conf: 'SEC', stadium: 'Tiger Stadium', city: 'Baton Rouge, LA', lat: 30.4120, lon: -91.1838, tz: 'America/Chicago', roof: 'Open' },
+      'Tennessee Volunteers': { conf: 'SEC', stadium: 'Neyland Stadium', city: 'Knoxville, TN', lat: 35.9550, lon: -83.9250, tz: 'America/New_York', roof: 'Open' },
+      'Oklahoma Sooners': { conf: 'SEC', stadium: 'Gaylord Family Oklahoma Memorial Stadium', city: 'Norman, OK', lat: 35.2059, lon: -97.4423, tz: 'America/Chicago', roof: 'Open' },
+      'Ole Miss Rebels': { conf: 'SEC', stadium: 'Vaught-Hemingway Stadium', city: 'Oxford, MS', lat: 34.3620, lon: -89.5342, tz: 'America/Chicago', roof: 'Open' },
+      'South Carolina Gamecocks': { conf: 'SEC', stadium: 'Williams-Brice Stadium', city: 'Columbia, SC', lat: 33.9730, lon: -81.0192, tz: 'America/New_York', roof: 'Open' },
+
+      'Ohio State Buckeyes': { conf: 'Big Ten', stadium: 'Ohio Stadium', city: 'Columbus, OH', lat: 40.0017, lon: -83.0197, tz: 'America/New_York', roof: 'Open' },
+      'Penn State Nittany Lions': { conf: 'Big Ten', stadium: 'Beaver Stadium', city: 'University Park, PA', lat: 40.8122, lon: -77.8561, tz: 'America/New_York', roof: 'Open' },
+      'Oregon Ducks': { conf: 'Big Ten', stadium: 'Autzen Stadium', city: 'Eugene, OR', lat: 44.0582, lon: -123.0685, tz: 'America/Los_Angeles', roof: 'Open' },
+      'Michigan Wolverines': { conf: 'Big Ten', stadium: 'Michigan Stadium', city: 'Ann Arbor, MI', lat: 42.2658, lon: -83.7487, tz: 'America/New_York', roof: 'Open' },
+      'USC Trojans': { conf: 'Big Ten', stadium: 'Los Angeles Memorial Coliseum', city: 'Los Angeles, CA', lat: 34.0141, lon: -118.2879, tz: 'America/Los_Angeles', roof: 'Open' },
+      'Washington Huskies': { conf: 'Big Ten', stadium: 'Husky Stadium', city: 'Seattle, WA', lat: 47.6503, lon: -122.3016, tz: 'America/Los_Angeles', roof: 'Open' },
+      'Iowa Hawkeyes': { conf: 'Big Ten', stadium: 'Kinnick Stadium', city: 'Iowa City, IA', lat: 41.6586, lon: -91.5511, tz: 'America/Chicago', roof: 'Open' },
+
+      'Florida State Seminoles': { conf: 'ACC', stadium: 'Doak S. Campbell Stadium', city: 'Tallahassee, FL', lat: 30.4382, lon: -84.3044, tz: 'America/New_York', roof: 'Open' },
+      'Clemson Tigers': { conf: 'ACC', stadium: 'Memorial Stadium', city: 'Clemson, SC', lat: 34.6788, lon: -82.8432, tz: 'America/New_York', roof: 'Open' },
+      'Miami Hurricanes': { conf: 'ACC', stadium: 'Hard Rock Stadium', city: 'Miami Gardens, FL', lat: 25.9580, lon: -80.2389, tz: 'America/New_York', roof: 'Open' },
+      'Syracuse Orange': { conf: 'ACC', stadium: 'JMA Wireless Dome', city: 'Syracuse, NY', lat: 43.0362, lon: -76.1363, tz: 'America/New_York', roof: 'Indoor / Dome' },
+
+      'Boise State Broncos': { conf: 'Mountain West', stadium: 'Albertsons Stadium', city: 'Boise, ID', lat: 43.6028, lon: -116.1959, tz: 'America/Boise', roof: 'Open' },
+      'Utah State Aggies': { conf: 'Mountain West', stadium: 'Maverik Stadium', city: 'Logan, UT', lat: 41.7516, lon: -111.8122, tz: 'America/Denver', roof: 'Open' },
+      'Air Force Falcons': { conf: 'Mountain West', stadium: 'Falcon Stadium', city: 'Colorado Springs, CO', lat: 38.9969, lon: -104.8436, tz: 'America/Denver', roof: 'Open' },
+
+      'Notre Dame Fighting Irish': { conf: 'Independent', stadium: 'Notre Dame Stadium', city: 'South Bend, IN', lat: 41.6984, lon: -86.2339, tz: 'America/Indiana/Indianapolis', roof: 'Open' },
+      'UConn Huskies': { conf: 'Independent', stadium: 'Pratt & Whitney Stadium', city: 'East Hartford, CT', lat: 41.7598, lon: -72.6188, tz: 'America/New_York', roof: 'Open' }
+    };
+
+const CONF_ID_MAP = { '1': 'ACC', '4': 'Big 12', '5': 'Big Ten', '8': 'SEC', '9': 'Pac-12', '12': 'C-USA', '15': 'MAC', '17': 'Mountain West', '18': 'Independent', '37': 'Sun Belt', '151': 'American' };
+
+const FALLBACK_GAMES_2026 = [
+      {
+        id: 'cin-at-byu-20261128',
+        week: 13,
+        kickoffIso: '2026-11-28T20:30:00Z',
+        timeConfirmed: true,
+        matchup: 'Cincinnati at BYU Cougars',
+        homeTeam: 'BYU Cougars',
+        awayTeam: 'Cincinnati Bearcats',
+        network: 'FOX',
+        conf: 'Big 12',
+        stadium: 'LaVell Edwards Stadium',
+        city: 'Provo, UT',
+        lat: 40.2575,
+        lon: -111.6545,
+        tz: 'America/Denver',
+        roof: 'Open'
+      },
+      {
+        id: 'aub-at-ala-20261128',
+        week: 13,
+        kickoffIso: '2026-11-29T00:30:00Z',
+        timeConfirmed: true,
+        matchup: 'Auburn at Alabama Crimson Tide',
+        homeTeam: 'Alabama Crimson Tide',
+        awayTeam: 'Auburn Tigers',
+        network: 'ABC',
+        conf: 'SEC',
+        stadium: 'Bryant-Denny Stadium',
+        city: 'Tuscaloosa, AL',
+        lat: 33.2084,
+        lon: -87.5504,
+        tz: 'America/Chicago',
+        roof: 'Open'
+      },
+      {
+        id: 'mich-at-osu-20261128',
+        week: 13,
+        kickoffIso: '2026-11-28T17:00:00Z',
+        timeConfirmed: true,
+        matchup: 'Michigan at Ohio State Buckeyes',
+        homeTeam: 'Ohio State Buckeyes',
+        awayTeam: 'Michigan Wolverines',
+        network: 'FOX',
+        conf: 'Big Ten',
+        stadium: 'Ohio Stadium',
+        city: 'Columbus, OH',
+        lat: 40.0017,
+        lon: -83.0197,
+        tz: 'America/New_York',
+        roof: 'Open'
+      },
+      {
+        id: 'wvu-at-utah-20261128',
+        week: 13,
+        kickoffIso: '2026-11-28T22:30:00Z',
+        timeConfirmed: true,
+        matchup: 'West Virginia at Utah Utes',
+        homeTeam: 'Utah Utes',
+        awayTeam: 'West Virginia Mountaineers',
+        network: 'ESPN',
+        conf: 'Big 12',
+        stadium: 'Rice-Eccles Stadium',
+        city: 'Salt Lake City, UT',
+        lat: 40.7599,
+        lon: -111.8488,
+        tz: 'America/Denver',
+        roof: 'Open'
+      },
+      {
+        id: 'tex-at-tamu-20261128',
+        week: 13,
+        kickoffIso: '2026-11-29T00:30:00Z',
+        timeConfirmed: true,
+        matchup: 'Texas at Texas A&M Aggies',
+        homeTeam: 'Texas A&M Aggies',
+        awayTeam: 'Texas Longhorns',
+        network: 'ABC',
+        conf: 'SEC',
+        stadium: 'Kyle Field',
+        city: 'College Station, TX',
+        lat: 30.6102,
+        lon: -96.3404,
+        tz: 'America/Chicago',
+        roof: 'Open'
+      },
+      {
+        id: 'uf-at-fsu-20261128',
+        week: 13,
+        kickoffIso: '2026-11-29T00:00:00Z',
+        timeConfirmed: true,
+        matchup: 'Florida at Florida State Seminoles',
+        homeTeam: 'Florida State Seminoles',
+        awayTeam: 'Florida Gators',
+        network: 'ESPN',
+        conf: 'ACC',
+        stadium: 'Doak S. Campbell Stadium',
+        city: 'Tallahassee, FL',
+        lat: 30.4382,
+        lon: -84.3044,
+        tz: 'America/New_York',
+        roof: 'Open'
+      },
+      {
+        id: 'nd-at-usc-20261128',
+        week: 13,
+        kickoffIso: '2026-11-28T20:30:00Z',
+        timeConfirmed: true,
+        matchup: 'Notre Dame at USC Trojans',
+        homeTeam: 'USC Trojans',
+        awayTeam: 'Notre Dame Fighting Irish',
+        network: 'NBC',
+        conf: 'Big Ten',
+        stadium: 'Los Angeles Memorial Coliseum',
+        city: 'Los Angeles, CA',
+        lat: 34.0141,
+        lon: -118.2879,
+        tz: 'America/Los_Angeles',
+        roof: 'Open'
+      },
+      {
+        id: 'unlv-at-bsu-20261128',
+        week: 13,
+        kickoffIso: '2026-11-28T21:00:00Z',
+        timeConfirmed: true,
+        matchup: 'UNLV at Boise State Broncos',
+        homeTeam: 'Boise State Broncos',
+        awayTeam: 'UNLV Rebels',
+        network: 'CBSSN',
+        conf: 'Mountain West',
+        stadium: 'Albertsons Stadium',
+        city: 'Boise, ID',
+        lat: 43.6028,
+        lon: -116.1959,
+        tz: 'America/Boise',
+        roof: 'Open'
+      }
+    ];
+
+const ST = Object.fromEntries('AL Alabama,AK Alaska,AZ Arizona,AR Arkansas,CA California,CO Colorado,CT Connecticut,DE Delaware,DC District of Columbia,FL Florida,GA Georgia,HI Hawaii,ID Idaho,IL Illinois,IN Indiana,IA Iowa,KS Kansas,KY Kentucky,LA Louisiana,ME Maine,MD Maryland,MA Massachusetts,MI Michigan,MN Minnesota,MS Mississippi,MO Missouri,MT Montana,NE Nebraska,NV Nevada,NH New Hampshire,NJ New Jersey,NM New Mexico,NY New York,NC North Carolina,ND North Dakota,OH Ohio,OK Oklahoma,OR Oregon,PA Pennsylvania,RI Rhode Island,SC South Carolina,SD South Dakota,TN Tennessee,TX Texas,UT Utah,VT Vermont,VA Virginia,WA Washington,WV West Virginia,WI Wisconsin,WY Wyoming'.split(',').map((s) => [s.slice(0, 2), s.slice(3)]));
+
+// ---------- helpers ----------
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const store = {
+  get(k, d) { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (_) { return d; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (_) {} }
+};
+async function getJson(url, opts = {}) {
+  const ctl = new AbortController();
+  const t = setTimeout(() => ctl.abort(), 12000);
+  try {
+    const r = await fetch(url, { ...opts, signal: ctl.signal });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    return await r.json();
+  } finally { clearTimeout(t); }
+}
+async function pool(items, n, fn) {
+  const q = [...items];
+  await Promise.all(Array.from({ length: Math.min(n, q.length) }, async () => { while (q.length) await fn(q.shift()); }));
+}
+const ymd = (ms) => new Date(ms).toISOString().slice(0, 10);
+
+function currentWeek() {
+  const w = Math.ceil((Date.now() - 2 * DAY - WEEK1_SAT) / (7 * DAY)) + 1;
+  return w > MAX_WEEK ? 'post' : Math.max(1, w);
+}
+function weekDates(week) { // Thu, Fri, Sat of that week (fallback date queries)
+  const sat = WEEK1_SAT + (week - 1) * 7 * DAY;
+  return [sat - 2 * DAY, sat - DAY, sat].map((ms) => ymd(ms).replace(/-/g, ''));
+}
+
+// ---------- state ----------
+const state = {
+  week: currentWeek(), timeFilter: 'all', conf: 'ALL', search: '', sort: 'kick',
+  games: [], token: 0, lastLoad: 0,
+  units: store.get('gamedaywx_units', 'imperial'),
+  pinnedKeys: new Set((() => { const p = store.get('gamedaywx_pinned_teams', ['BYU Cougars', 'Alabama Crimson Tide']); return Array.isArray(p) ? p : []; })()),
+  compareIds: [], compareOpen: false, expanded: new Set()
+};
+const params = new URLSearchParams(location.search);
+if (params.get('sort') === 'worst') state.sort = 'worst';
+
+const wxMem = new Map();
+const WX_KEY = 'gamedaywx_wx_v2', GEO_KEY = 'gamedaywx_geo_v1';
+const wxStore = store.get(WX_KEY, {});
+const geo = store.get(GEO_KEY, {});
+const alertMem = new Map();
+const savePins = () => store.set('gamedaywx_pinned_teams', [...state.pinnedKeys]);
+
+// ---------- formatting ----------
+const metric = () => state.units === 'metric';
+const fT = (f) => f == null ? '—' : `${Math.round(metric() ? (f - 32) * 5 / 9 : f)}°`;
+const wN = (m) => m == null ? '—' : Math.round(metric() ? m * 1.609 : m);
+const wU = () => metric() ? 'km/h' : 'mph';
+const fW = (m) => `${wN(m)} ${wU()}`;
+const compass = (d) => d == null ? '' : ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'][Math.round(d / 45) % 8];
+function fAmt(mm) { mm = mm || 0; return metric() ? `${mm < 10 ? mm.toFixed(1) : Math.round(mm)} mm` : `${(mm / 25.4).toFixed(2)} in`; }
+function fPrecip(s, past) { return (past || s.pp == null) ? fAmt(s.mm) : `${Math.round(s.pp)}%`; }
+function fGust(s) { return s.gust != null && s.gust > s.wind + 5 ? ` (G ${wN(s.gust)})` : ''; }
+
+function weatherCodeToInfo(code, isDay = 1) {
+  if (code === 0) return { label: 'Clear Sky', emoji: isDay ? '☀️' : '🌙' };
+  if (code === 1) return { label: 'Mostly Clear', emoji: isDay ? '🌤️' : '🌙' };
+  if (code === 2) return { label: 'Partly Cloudy', emoji: '⛅' };
+  if (code === 3) return { label: 'Overcast', emoji: '☁️' };
+  if (code >= 45 && code <= 48) return { label: 'Foggy', emoji: '🌫️' };
+  if (code >= 51 && code <= 67) return { label: 'Rain', emoji: '🌧️' };
+  if ((code >= 71 && code <= 77) || code === 85 || code === 86) return { label: 'Snow', emoji: '❄️' };
+  if (code >= 80 && code <= 82) return { label: 'Showers', emoji: '🌦️' };
+  if (code >= 95) return { label: 'Thunderstorms', emoji: '⛈️' };
+  return { label: 'Partly Cloudy', emoji: '⛅' };
+}
+function formatInZone(iso, tz, opts) {
+  const dt = new Date(iso);
+  if (Number.isNaN(dt.getTime())) return 'TBD';
+  try { return new Intl.DateTimeFormat('en-US', { ...opts, ...(tz ? { timeZone: tz } : {}) }).format(dt); }
+  catch (_) { return new Intl.DateTimeFormat('en-US', opts).format(dt); }
+}
+function compact(dateObj, tz) {
+  try {
+    return new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: '2-digit', hour12: true, ...(tz ? { timeZone: tz } : {}) })
+      .format(dateObj).replace(' AM', 'a').replace(' PM', 'p');
+  } catch (_) { return ''; }
+}
+const isPast = (g) => g.status?.state === 'post' || Date.parse(g.kickoffIso) + 4.5 * HOUR < Date.now();
+const isIndoor = (g) => g.roof === 'Indoor / Dome';
+const timeText = (g) => g.timeConfirmed
+  ? formatInZone(g.kickoffIso, g.tz, { hour: 'numeric', minute: '2-digit', hour12: true, ...(g.tz ? {} : { timeZoneName: 'short' }) })
+  : 'TBD';
+const dateText = (g) => formatInZone(g.kickoffIso, g.tz, { weekday: 'short', month: 'short', day: 'numeric' }).toUpperCase();
+
+// ---------- schedule ----------
+function normalizeEspnEvent(ev, week) {
+  const comp = ev.competitions?.[0];
+  if (!comp) return null;
+  const home = comp.competitors?.find((c) => c.homeAway === 'home');
+  const away = comp.competitors?.find((c) => c.homeAway === 'away');
+  const homeName = home?.team?.displayName || 'Home';
+  const awayShort = away?.team?.shortDisplayName || away?.team?.location || away?.team?.displayName || 'Away';
+  const meta = STADIUM_META[homeName] || {};
+  const venue = comp.venue || {}, addr = venue.address || {};
+  const st = ev.status?.type || {};
+  const sc = (c) => (c?.score != null && c.score !== '' ? Number(c.score) : null);
+  return {
+    id: String(ev.id), week,
+    kickoffIso: ev.date || comp.date,
+    timeConfirmed: comp.timeValid !== false && !String(st.shortDetail || '').includes('TBD'),
+    matchup: `${awayShort} at ${homeName}`, homeTeam: homeName,
+    awayTeam: away?.team?.displayName || awayShort,
+    network: comp.broadcasts?.[0]?.names?.[0] || comp.geoBroadcasts?.[0]?.media?.shortName || 'TBD',
+    conf: CONF_ID_MAP[String(home?.team?.conferenceId || '')] || meta.conf || 'FBS',
+    stadium: venue.fullName || meta.stadium || `${homeName} Stadium`,
+    city: addr.city && addr.state ? `${addr.city}, ${addr.state}` : (meta.city || ''),
+    lat: meta.lat ?? venue.coordinates?.latitude ?? null,
+    lon: meta.lon ?? venue.coordinates?.longitude ?? null,
+    tz: meta.tz || undefined,
+    roof: venue.indoor ? 'Indoor / Dome' : (meta.roof || 'Open'),
+    status: { state: st.state || 'pre', detail: st.shortDetail || '', hs: sc(home), as: sc(away) }
+  };
+}
+
+async function loadGames(week, force) {
+  const key = `gamedaywx_games_${SEASON_YEAR}_${week}_v2`;
+  const cached = store.get(key, null);
+  const valid = cached && Array.isArray(cached.games) && cached.games.length > 0;
+  if (!force && valid) {
+    const ttl = cached.games.some((g) => g.status?.state === 'in') ? 60e3 : 10 * 60e3;
+    if (Date.now() - cached.savedAt < ttl) return { games: cached.games, source: 'live', savedAt: cached.savedAt };
+  }
+  if (navigator.onLine) {
+    try {
+      const base = `${ESPN}?groups=80&limit=300`;
+      let events = [];
+      const url = week === 'post' ? `${base}&seasontype=3&dates=${SEASON_YEAR}` : `${base}&seasontype=2&dates=${SEASON_YEAR}&week=${week}`;
+      try { events = (await getJson(url)).events || []; } catch (_) {}
+      if (!events.length && week !== 'post') {
+        const r = await Promise.allSettled(weekDates(week).map((d) => getJson(`${base}&seasontype=2&dates=${d}`)));
+        events = r.filter((x) => x.status === 'fulfilled').flatMap((x) => x.value.events || []);
+      }
+      const seen = new Set();
+      const games = events.filter((e) => e?.id && !seen.has(e.id) && seen.add(e.id))
+        .map((e) => normalizeEspnEvent(e, week)).filter(Boolean)
+        .sort((a, b) => new Date(a.kickoffIso) - new Date(b.kickoffIso));
+      if (games.length) {
+        store.set(key, { savedAt: Date.now(), games });
+        return { games, source: 'live', savedAt: Date.now() };
+      }
+      if (!valid) return { games: [], source: 'empty' };
+    } catch (_) {}
+  }
+  if (valid) return { games: cached.games, source: 'cache', savedAt: cached.savedAt };
+  const fb = FALLBACK_GAMES_2026.filter((g) => Number(g.week) === Number(week)).map((g) => ({ status: { state: 'pre' }, ...g }));
+  return { games: fb, source: fb.length ? 'sample' : 'none' };
+}
+
+// ---------- geocoding (for stadiums not in STADIUM_META) ----------
+async function geocode(city) {
+  const [name, st] = city.split(',').map((s) => s.trim());
+  try {
+    const d = await getJson('https://geocoding-api.open-meteo.com/v1/search?' + new URLSearchParams({ name, count: '10', language: 'en', format: 'json', countryCode: 'US' }));
+    const rs = d.results || [];
+    const r = rs.find((x) => x.admin1 === ST[st]) || rs[0];
+    return r ? { lat: r.latitude, lon: r.longitude, tz: r.timezone } : null;
+  } catch (_) { return undefined; }
+}
+async function ensureCoords(g) {
+  if (g.lat != null && g.lon != null) return true;
+  if (!g.city) return false;
+  let hit = geo[g.city];
+  if (hit === undefined) {
+    hit = await geocode(g.city);
+    if (hit === undefined) return false;
+    geo[g.city] = hit; store.set(GEO_KEY, geo);
+  }
+  if (!hit) return false;
+  g.lat = hit.lat; g.lon = hit.lon; if (!g.tz) g.tz = hit.tz;
+  return true;
+}
+
+// ---------- weather model ----------
+const lerp = (a, b, f) => (a == null || b == null ? (a ?? b) : a + (b - a) * f);
+function sampleAt(hours, ms) {
+  let i = 0;
+  while (i < hours.length - 1 && hours[i + 1].t <= ms) i++;
+  const a = hours[i], b = hours[Math.min(i + 1, hours.length - 1)];
+  const f = b.t > a.t ? Math.min(1, Math.max(0, (ms - a.t) / (b.t - a.t))) : 0;
+  const near = f < 0.5 ? a : b;
+  return { t: ms, temp: lerp(a.temp, b.temp, f), feel: lerp(a.feel, b.feel, f), pp: lerp(a.pp, b.pp, f), mm: lerp(a.mm, b.mm, f),
+    wind: lerp(a.wind, b.wind, f), gust: lerp(a.gust, b.gust, f), dir: near.dir, code: near.code, day: near.day };
+}
+function impactScore(s) {
+  let x = 0;
+  if (s.code >= 95) x += 100;
+  if ((s.code >= 71 && s.code <= 77) || s.code === 85 || s.code === 86) x += 35;
+  x += (s.pp != null ? s.pp : Math.min(100, (s.mm || 0) * 60)) * 0.5;
+  x += Math.max(0, (s.gust ?? s.wind) - 12) * 1.8;
+  const f = s.feel ?? s.temp;
+  if (f < 32) x += (32 - f) * 1.5;
+  if (f > 92) x += (f - 92) * 3;
+  return Math.round(x);
+}
+const levelOf = (x) => (x >= 60 ? 'high' : x >= 30 ? 'mod' : 'low');
+const LEVEL_TXT = { low: 'LOW IMPACT', mod: 'MODERATE IMPACT', high: 'HIGH IMPACT' };
+
+function decorate(s, tz) { const i = weatherCodeToInfo(s.code, s.day); return { ...s, cond: i.label, emoji: i.emoji, score: impactScore(s), time: compact(new Date(s.t), tz) }; }
+function buildVM(g, raw) {
+  if (!raw || raw.error) return null;
+  if (raw.indoor) return { indoor: true };
+  if (!raw.hours?.length) return null;
+  const k = Date.parse(g.kickoffIso);
+  const quarters = [['Q1', 0], ['Q2', 50], ['Q3', 115], ['Q4', 165]].map(([q, m]) => ({ ...decorate(sampleAt(raw.hours, k + m * 6e4), g.tz), q }));
+  let worst = quarters[0];
+  for (const q of quarters) if (q.score > worst.score) worst = q;
+  const hourly = raw.hours.filter((h) => h.t >= k - HOUR && h.t <= k + 4.5 * HOUR).map((h) => decorate(h, g.tz));
+  const now = raw.now ? { temp: raw.now.temp, ...weatherCodeToInfo(raw.now.code, raw.now.day ?? 1) } : null;
+  return { quarters, kickoff: quarters[0], worst, level: levelOf(worst.score), hourly, now, savedAt: raw.savedAt, stale: !!raw.stale };
+}
+const vmOf = (g) => buildVM(g, wxMem.get(g.id));
+
+function wxFresh(g, raw) {
+  if (raw.error || raw.indoor) return !!raw.indoor;
+  return Date.now() - raw.savedAt < (isPast(g) ? 12 * 3600e3 : 30 * 60e3);
+}
+function persistWx() {
+  const ids = Object.keys(wxStore).sort((a, b) => wxStore[b].savedAt - wxStore[a].savedAt).slice(0, 120);
+  const out = {}; ids.forEach((i) => (out[i] = wxStore[i]));
+  store.set(WX_KEY, out);
+}
+
+function ingest(g, r) {
+  const h = r?.hourly;
+  if (!h?.time?.length) { wxMem.set(g.id, { error: 'empty' }); return; }
+  const off = (r.utc_offset_seconds || 0) * 1000, k = Date.parse(g.kickoffIso);
+  const hours = [];
+  h.time.forEach((t, i) => {
+    const ms = Date.parse(t + 'Z') - off;
+    if (ms < k - 2 * HOUR || ms > k + 5.5 * HOUR) return;
+    hours.push({ t: ms, temp: h.temperature_2m[i], feel: h.apparent_temperature?.[i] ?? null, pp: h.precipitation_probability?.[i] ?? null,
+      mm: h.precipitation?.[i] ?? 0, wind: h.wind_speed_10m[i] ?? 0, gust: h.wind_gusts_10m?.[i] ?? null, dir: h.wind_direction_10m?.[i] ?? null,
+      code: h.weather_code?.[i] ?? 1, day: h.is_day?.[i] ?? 1 });
+  });
+  if (!hours.length) { wxMem.set(g.id, { error: 'empty' }); return; }
+  if (r.timezone && !g.tz) g.tz = r.timezone;
+  const raw = { savedAt: Date.now(), tz: r.timezone, hours, now: r.current ? { temp: r.current.temperature_2m, code: r.current.weather_code, day: r.current.is_day } : null };
+  wxMem.set(g.id, raw); wxStore[g.id] = raw;
+}
+
+async function fetchGroup(key, list, forceArchive) {
+  const [kind, start, end] = key.split('|');
+  const archive = forceArchive || kind === 'a';
+  const byLoc = new Map();
+  list.forEach((g) => { const lk = `${g.lat.toFixed(3)},${g.lon.toFixed(3)}`; if (!byLoc.has(lk)) byLoc.set(lk, []); byLoc.get(lk).push(g); });
+  const locs = [...byLoc.keys()];
+  for (let i = 0; i < locs.length; i += 30) {
+    const chunk = locs.slice(i, i + 30);
+    const p = new URLSearchParams({
+      latitude: chunk.map((l) => l.split(',')[0]).join(','), longitude: chunk.map((l) => l.split(',')[1]).join(','),
+      hourly: archive ? H_ARCH : H_FC, temperature_unit: 'fahrenheit', wind_speed_unit: 'mph', precipitation_unit: 'mm',
+      start_date: start, end_date: end, timezone: 'auto'
+    });
+    if (!archive) p.set('current', 'temperature_2m,weather_code,is_day');
+    try {
+      const d = await getJson(`${archive ? ARCH_URL : FC_URL}?${p}`);
+      const arr = Array.isArray(d) ? d : [d];
+      chunk.forEach((lk, idx) => byLoc.get(lk).forEach((g) => ingest(g, arr[idx])));
+    } catch (_) {
+      const games = chunk.flatMap((lk) => byLoc.get(lk));
+      if (!archive && games.every(isPast)) { await fetchGroup(key, games, true); continue; }
+      games.forEach((g) => {
+        const old = wxStore[g.id];
+        wxMem.set(g.id, old ? { ...old, stale: true } : { error: 'fetch' });
+      });
+    }
+  }
+}
+
+async function loadWeather(games, force = false) {
+  const todo = [];
+  for (const g of games) {
+    if (isIndoor(g)) { wxMem.set(g.id, { indoor: true, savedAt: Date.now() }); continue; }
+    if (!wxMem.has(g.id) && wxStore[g.id]) wxMem.set(g.id, wxStore[g.id]);
+    const raw = wxMem.get(g.id);
+    if (raw && !force && wxFresh(g, raw)) continue;
+    todo.push(g);
+  }
+  await pool(todo, 6, ensureCoords);
+  const groups = new Map();
+  for (const g of todo) {
+    const k = Date.parse(g.kickoffIso);
+    if (g.lat == null) { if (!wxMem.get(g.id)?.hours) wxMem.set(g.id, { error: 'no-location' }); continue; }
+    if (Number.isNaN(k)) { wxMem.set(g.id, { error: 'empty' }); continue; }
+    if ((k - Date.now()) / DAY > 15.5) { wxMem.set(g.id, { error: 'too-far' }); continue; }
+    const key = `${Date.now() - k > 80 * DAY ? 'a' : 'f'}|${ymd(k - DAY)}|${ymd(k + 3.5 * HOUR + DAY)}`;
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(g);
+  }
+  await Promise.all([...groups].map(([key, list]) => fetchGroup(key, list)));
+  persistWx();
+  games.forEach(paintCard);
+  setWxBadge(games);
+  updateSummary(); updateCompareDrawer();
+  if (state.sort === 'worst') renderBoard();
+}
+
+// ---------- NWS alerts (US) ----------
+async function loadAlerts(games) {
+  const list = games.filter((g) => g.lat != null && !isPast(g) && !isIndoor(g) && Date.parse(g.kickoffIso) - Date.now() < 3 * DAY);
+  await pool(list, 4, async (g) => {
+    const c = alertMem.get(g.id);
+    if (c && Date.now() - c.t < 10 * 60e3) return;
+    try {
+      const d = await getJson(`https://api.weather.gov/alerts/active?point=${g.lat.toFixed(4)},${g.lon.toFixed(4)}`, { headers: { Accept: 'application/geo+json' } });
+      const rank = { Extreme: 4, Severe: 3, Moderate: 2, Minor: 1 };
+      const items = (d.features || []).map((f) => f.properties).sort((a, b) => (rank[b.severity] || 0) - (rank[a.severity] || 0));
+      const seen = new Set(), out = [];
+      for (const p of items) if (!seen.has(p.event)) { seen.add(p.event); out.push({ event: p.event, sev: p.severity }); }
+      alertMem.set(g.id, { t: Date.now(), list: out.slice(0, 3) });
+    } catch (_) { alertMem.set(g.id, { t: Date.now(), list: [] }); }
+    paintAlerts(g);
+  });
+}
+function paintAlerts(g) {
+  const el = $(`al-${g.id}`);
+  if (!el) return;
+  const a = alertMem.get(g.id)?.list || [];
+  el.innerHTML = a.map((x) => `<span class="alert-chip ${x.sev === 'Extreme' || x.sev === 'Severe' ? 'sev' : ''}">⚠ ${esc(x.event)}</span>`).join('');
+}
+
+// ---------- rendering ----------
+function statusChip(g) {
+  const s = g.status;
+  if (!s) return '';
+  const sc = s.as != null && s.hs != null ? ` ${s.as}–${s.hs}` : '';
+  if (s.state === 'in') return `<span class="live-chip">● LIVE ${esc(s.detail)}${sc}</span>`;
+  if (s.state === 'post') return `<span class="final-chip">FINAL${sc}</span>`;
+  return '';
+}
+
+function paintCard(g) {
+  const slot = $(`wxslot-${g.id}`);
+  if (!slot) return;
+  const raw = wxMem.get(g.id);
+  const nowEl = $(`now-${g.id}`), nowLbl = $(`now-label-${g.id}`);
+  const dt = $(`dt-${g.id}`), tv = $(`tv-${g.id}`);
+  if (dt) dt.innerHTML = `${esc(dateText(g))} ${statusChip(g)}`;
+  if (tv) tv.textContent = `${timeText(g)} • ${g.network}`;
+  const vm = buildVM(g, raw);
+
+  if (!vm) {
+    const msg = raw?.error === 'too-far' ? 'Forecast becomes available within 16 days of kickoff.'
+      : raw?.error === 'no-location' ? 'Stadium location unavailable.'
+      : raw ? 'Stadium forecast unavailable right now.' : 'Syncing stadium weather…';
+    if (nowEl) nowEl.textContent = '—';
+    slot.innerHTML = `<div class="wx-note">${esc(msg)}</div>`;
+    return;
+  }
+  if (vm.indoor) {
+    if (nowEl) nowEl.innerHTML = '<span aria-hidden="true">🏟️</span><span>IN</span>';
+    slot.innerHTML = '<div class="wx-note">🏟️ Indoor venue — weather does not affect play.</div>';
+    return;
+  }
+  const past = isPast(g);
+  if (nowLbl) nowLbl.textContent = past ? 'KICKOFF' : 'NOW';
+  if (nowEl) {
+    const n = past || !vm.now ? { temp: vm.kickoff.temp, emoji: vm.kickoff.emoji } : vm.now;
+    nowEl.innerHTML = `<span aria-hidden="true">${n.emoji}</span><span>${fT(n.temp)}</span>`;
+  }
+  const panel = (title, tag, s, extra = '') => `
+    <div class="wx-panel ${extra}">
+      <div class="wx-panel-head"><span>${title}</span><span class="wx-panel-time">${esc(tag)}</span></div>
+      <div class="wx-main-row"><span class="wx-emoji" aria-hidden="true">${s.emoji}</span>
+        <div><div class="wx-temp-big">${fT(s.temp)}</div><div class="wx-cond-sub">${esc(s.cond)}</div></div></div>
+      <div class="wx-panel-foot"><span>🌬 ${fW(s.wind)}${fGust(s)}</span><span class="${extra ? 'precip-val' : ''}" ${extra ? '' : 'style="color:#60a5fa;"'}>💧 ${fPrecip(s, past)}</span></div>
+    </div>`;
+  const qtr = vm.quarters.map((q) => `
+    <div class="qtr-box"><div class="qtr-top"><span>${q.q}</span><span>${esc(q.time)}</span></div>
+      <div class="qtr-mid"><span aria-hidden="true">${q.emoji}</span> ${fT(q.temp)}</div>
+      <div class="qtr-bot">${wN(q.wind)} ${wU()} • ${fPrecip(q, past)}</div></div>`).join('');
+  const hourly = vm.hourly.map((h) => `
+    <div class="hr-tile"><b>${esc(h.time)}</b><span><span aria-hidden="true">${h.emoji}</span> ${fT(h.temp)}</span>
+      <small>${compass(h.dir)} ${wN(h.gust ?? h.wind)}</small><small>💧 ${fPrecip(h, past)}</small></div>`).join('');
+  const upd = `${vm.stale ? 'Cached' : past ? 'Actual conditions' : 'Updated'} ${compact(new Date(vm.savedAt))}`;
+  const k = vm.kickoff;
+  slot.innerHTML = `
+    <div class="impact-row"><span class="impact ${vm.level}">${LEVEL_TXT[vm.level]}</span><span class="upd">${esc(upd)}</span></div>
+    <div class="dual-wx-grid">
+      ${panel('AT KICKOFF', timeText(g), k)}
+      ${panel('WORST IN-GAME', vm.worst === k ? 'Kickoff' : vm.worst.q, vm.worst, 'worst')}
+    </div>
+    <div style="margin-top:10px;"><div class="qtr-section-label">QUARTER-BY-QUARTER (~50 MIN/QTR)</div><div class="qtr-grid">${qtr}</div></div>
+    <div class="details">
+      <div class="qtr-section-label">HOURLY (GUST SPEED &amp; DIRECTION)</div>
+      <div class="hourly">${hourly}</div>
+      <div class="detail-line">Feels like ${fT(k.feel)} at kickoff • Wind from ${compass(k.dir) || '—'}${k.gust != null ? ` • Gusts ${fW(k.gust)}` : ''}
+        ${g.lat != null ? ` • <a href="https://forecast.weather.gov/MapClick.php?lat=${g.lat.toFixed(4)}&lon=${g.lon.toFixed(4)}" target="_blank" rel="noopener">NWS forecast &amp; radar ↗</a>` : ''}</div>
+    </div>`;
+}
+
+function buildCardElement(g, isPinned) {
+  const card = document.createElement('article');
+  const open = state.expanded.has(g.id);
+  card.className = `stadium-card${isPinned ? ' pinned' : ''}${open ? ' expanded' : ''}`;
+  const homePin = state.pinnedKeys.has(g.homeTeam), awayPin = state.pinnedKeys.has(g.awayTeam);
+  card.innerHTML = `
+    <div class="card-header">
+      <div>
+        <div class="venue-meta-top"><span class="conf-badge">${esc(g.conf)}</span><span class="city-text">${esc(g.city)}</span></div>
+        <div class="stadium-name">${esc(g.stadium)}</div>
+        <div class="home-team-sub">${esc(g.homeTeam)}</div>
+      </div>
+      <div class="card-right-controls">
+        <div class="now-box"><div class="now-label" id="now-label-${esc(g.id)}">NOW</div><div class="now-val" id="now-${esc(g.id)}">—</div></div>
+        <button class="cmp-mini-btn ${state.compareIds.includes(g.id) ? 'active' : ''}" data-action="cmp" data-id="${esc(g.id)}" type="button"
+          aria-label="Compare ${esc(g.stadium)}" aria-pressed="${state.compareIds.includes(g.id)}">⇄</button>
+        <button class="pin-btn ${homePin ? 'active' : ''}" data-action="pin" data-team="${esc(g.homeTeam)}" type="button"
+          aria-label="${homePin ? 'Unpin' : 'Pin'} ${esc(g.homeTeam)}" aria-pressed="${homePin}">${homePin ? '★' : '☆'}</button>
+      </div>
+    </div>
+    <div class="matchup-box">
+      <div class="matchup-date" id="dt-${esc(g.id)}">${esc(dateText(g))} ${statusChip(g)}</div>
+      <div class="matchup-row">
+        <div class="matchup-title"><span aria-hidden="true">🏈</span> ${esc(g.matchup)}</div>
+        <span class="tv-pill" id="tv-${esc(g.id)}">${esc(timeText(g))} • ${esc(g.network)}</span>
+      </div>
+      <button class="away-pin ${awayPin ? 'active' : ''}" data-action="pin" data-team="${esc(g.awayTeam)}" type="button" aria-pressed="${awayPin}">
+        ${awayPin ? '★' : '☆'} ${awayPin ? 'Unpin' : 'Pin'} ${esc(g.awayTeam)}</button>
+    </div>
+    <div id="al-${esc(g.id)}" class="alerts" aria-live="polite"></div>
+    <div id="wxslot-${esc(g.id)}"><div class="wx-note">Syncing stadium weather…</div></div>
+    <button class="details-btn" data-action="toggle" data-id="${esc(g.id)}" type="button" aria-expanded="${open}">
+      <span class="when-closed">Details ▾</span><span class="when-open">Hide details ▴</span></button>`;
+  return card;
+}
+
+function sortGames(list) {
+  const a = [...list];
+  if (state.sort === 'worst') a.sort((x, y) => (vmOf(y)?.worst?.score ?? -1) - (vmOf(x)?.worst?.score ?? -1));
+  return a;
+}
+const isPinnedGame = (g) => state.pinnedKeys.has(g.homeTeam) || state.pinnedKeys.has(g.awayTeam);
+
+function renderBoard() {
+  const q = state.search.trim().toLowerCase();
+  const filtered = state.games.filter((g) => {
+    if (state.conf !== 'ALL' && g.conf.toLowerCase() !== state.conf.toLowerCase()) return false;
+    if (state.timeFilter === 'confirmed' && !g.timeConfirmed) return false;
+    if (state.timeFilter === 'tbd' && g.timeConfirmed) return false;
+    if (q && ![g.matchup, g.homeTeam, g.awayTeam, g.stadium, g.city, g.conf].join(' ').toLowerCase().includes(q)) return false;
+    return true;
+  });
+  $('gamesCountLabel').textContent = `${filtered.length} Game${filtered.length === 1 ? '' : 's'}`;
+  $('allSectionTitle').textContent = state.week === 'post' ? 'POSTSEASON MATCHUPS' : `ALL WEEK ${state.week} MATCHUPS`;
+
+  const pinned = sortGames(filtered.filter(isPinnedGame));
+  const regular = sortGames(filtered.filter((g) => !isPinnedGame(g)));
+  const pg = $('pinnedGrid'), ag = $('allGrid');
+  pg.innerHTML = ''; ag.innerHTML = '';
+  $('pinnedSection').style.display = pinned.length ? 'block' : 'none';
+  pinned.forEach((g) => { pg.appendChild(buildCardElement(g, true)); paintCard(g); paintAlerts(g); });
+  regular.forEach((g) => { ag.appendChild(buildCardElement(g, false)); paintCard(g); paintAlerts(g); });
+  if (!regular.length && !pinned.length) {
+    ag.innerHTML = `<div class="empty-box">${state.games.length ? 'No matchups match your current search, conference, or kickoff filter.' : esc(state.emptyMsg || 'No games found.')}</div>`;
+  }
+}
+
+function updateSummary() {
+  const el = $('wxSummary');
+  const list = state.games.filter((g) => !isIndoor(g));
+  if (!list.length) { el.textContent = ''; return; }
+  if (list.every(isPast)) { el.textContent = 'Completed games — showing actual recorded conditions.'; return; }
+  let hi = 0, mod = 0, n = 0;
+  list.filter((g) => !isPast(g)).forEach((g) => { const v = vmOf(g); if (!v) return; n++; if (v.level === 'high') hi++; else if (v.level === 'mod') mod++; });
+  el.textContent = !n ? '' : hi + mod === 0 ? `✅ No elevated weather risk across ${n} upcoming games.`
+    : `⚠ ${hi} high • ${mod} moderate weather impact across ${n} upcoming games.`;
+}
+
+function setEspnBadge(res) {
+  const b = $('espnSyncBadge'), t = $('espnSyncText');
+  const when = res.savedAt ? ` · ${compact(new Date(res.savedAt))}` : '';
+  const map = { live: ['ESPN Live', false], cache: ['ESPN Cached', true], sample: ['Sample data (offline)', true], empty: ['No games found', true], none: ['Schedule unavailable', true] };
+  const [txt, warn] = map[res.source] || map.none;
+  b.classList.toggle('warn', warn);
+  t.textContent = txt + (res.source === 'live' || res.source === 'cache' ? when : '');
+}
+function setWxBadge(games) {
+  const b = $('wxSyncBadge'), t = $('wxSyncText');
+  const list = games.filter((g) => !isIndoor(g));
+  const ok = list.filter((g) => wxMem.get(g.id)?.hours).length;
+  const stale = list.some((g) => wxMem.get(g.id)?.stale);
+  const bad = list.filter((g) => { const e = wxMem.get(g.id)?.error; return e && e !== 'too-far'; }).length;
+  let txt = `Weather ${compact(new Date())}`, warn = false;
+  if (!navigator.onLine || stale) { txt = 'Cached Weather'; warn = true; }
+  else if (list.length && !ok && bad) { txt = 'Weather unavailable'; warn = true; }
+  else if (bad) { txt = 'Weather partial'; warn = true; }
+  b.classList.toggle('warn', warn); t.textContent = txt;
+}
+
+function updateCompareDrawer() {
+  $('compareHeaderLabel').textContent = state.compareIds.length ? `Compare (${state.compareIds.length})` : 'Compare';
+  $('compareHeaderBtn').classList.toggle('active', state.compareOpen);
+  $('compareDrawer').classList.toggle('show', state.compareOpen && state.compareIds.length > 0);
+  const grid = $('compareGrid');
+  grid.innerHTML = '';
+  for (const id of state.compareIds) {
+    const g = state.games.find((x) => x.id === id);
+    if (!g) continue;
+    const v = vmOf(g), past = isPast(g);
+    const body = !v ? 'Loading stadium weather…' : v.indoor ? 'Indoor venue'
+      : `Kickoff: <strong>${fT(v.kickoff.temp)}</strong> (${esc(v.kickoff.cond)}) • Wind ${fW(v.kickoff.wind)} • Precip ${fPrecip(v.kickoff, past)}
+         <br><span class="impact ${v.level}">${LEVEL_TXT[v.level]}</span>`;
+    const div = document.createElement('div');
+    div.className = 'compare-item';
+    div.innerHTML = `<div style="font-weight:800;color:#fff;">${esc(g.stadium)}</div>
+      <div style="color:#93c5fd;font-size:0.75rem;margin-bottom:6px;">${esc(g.matchup)}</div><div style="color:#cbd5e1;">${body}</div>`;
+    grid.appendChild(div);
+  }
+}
+
+async function refreshSchedule(force = false) {
+  const token = ++state.token;
+  $('allGrid').innerHTML = `<div class="empty-box">Loading ${state.week === 'post' ? 'postseason' : 'Week ' + state.week} matchups…</div>`;
+  $('pinnedSection').style.display = 'none';
+  const res = await loadGames(state.week, force);
+  if (token !== state.token) return;
+  state.games = res.games; state.lastLoad = Date.now();
+  state.emptyMsg = res.source === 'sample' || res.source === 'none'
+    ? 'No schedule is available offline for this week. Reconnect to load it.'
+    : `No games found for ${state.week === 'post' ? 'the postseason' : 'Week ' + state.week} yet.`;
+  setEspnBadge(res);
+  renderBoard(); updateSummary(); updateCompareDrawer();
+  await loadWeather(res.games, force);
+  if (token !== state.token) return;
+  loadAlerts(res.games);
+  if (params.get('view') === 'pinned' && !state.shortcutDone) { state.shortcutDone = true; $('pinnedSection').scrollIntoView({ block: 'start' }); }
+}
+
+// ---------- UI wiring ----------
+function buildWeekPills() {
+  const track = $('weekTrack');
+  const items = Array.from({ length: MAX_WEEK }, (_, i) => String(i + 1)).concat('post');
+  track.innerHTML = items.map((w) => `<button class="wk-pill" role="tab" data-week="${w}" aria-selected="false" type="button">${w === 'post' ? 'Post' : 'Wk ' + w}</button>`).join('');
+  markWeek();
+}
+function markWeek() {
+  document.querySelectorAll('.wk-pill').forEach((b) => {
+    const on = b.dataset.week === String(state.week);
+    b.classList.toggle('active', on); b.setAttribute('aria-selected', on);
+    if (on) b.scrollIntoView({ inline: 'center', block: 'nearest' });
+  });
+}
+function setPressed(sel, active) {
+  document.querySelectorAll(sel).forEach((b) => { const on = b === active; b.classList.toggle('active', on); b.setAttribute('aria-pressed', on); });
+}
+function updateUnitsBtn() { $('unitsBtn').textContent = metric() ? '°C · km/h' : '°F · mph'; }
+
+function init() {
+  buildWeekPills();
+  document.querySelectorAll('.time-filter-pill,.conf-pill,.sort-pill').forEach((b) => b.setAttribute('aria-pressed', b.classList.contains('active')));
+  if (state.sort === 'worst') setPressed('.sort-pill', document.querySelector('.sort-pill[data-sort="worst"]'));
+  updateUnitsBtn();
+
+  const net = () => {
+    const on = navigator.onLine;
+    $('offlineBanner').classList.toggle('show', !on);
+    if (!on) { $('wxSyncBadge').classList.add('warn'); $('wxSyncText').textContent = 'Cached Weather'; }
+  };
+  window.addEventListener('offline', net);
+  window.addEventListener('online', () => { net(); refreshSchedule(false); });
+  net();
+
+  $('weekTrack').addEventListener('click', (e) => {
+    const b = e.target.closest('.wk-pill'); if (!b) return;
+    state.week = b.dataset.week === 'post' ? 'post' : Number(b.dataset.week);
+    markWeek(); refreshSchedule(false);
+  });
+  document.querySelectorAll('.time-filter-pill').forEach((b) => b.addEventListener('click', () => { setPressed('.time-filter-pill', b); state.timeFilter = b.dataset.timefilter; renderBoard(); }));
+  $('confRow').addEventListener('click', (e) => { const b = e.target.closest('.conf-pill'); if (!b) return; setPressed('.conf-pill', b); state.conf = b.dataset.conf; renderBoard(); });
+  document.querySelectorAll('.sort-pill').forEach((b) => b.addEventListener('click', () => { setPressed('.sort-pill', b); state.sort = b.dataset.sort; renderBoard(); }));
+  let st; $('searchInput').addEventListener('input', (e) => { clearTimeout(st); st = setTimeout(() => { state.search = e.target.value; renderBoard(); }, 150); });
+  $('refreshBtn').addEventListener('click', () => { wxMem.clear(); alertMem.clear(); refreshSchedule(true); });
+  $('unitsBtn').addEventListener('click', () => { state.units = metric() ? 'imperial' : 'metric'; store.set('gamedaywx_units', state.units); updateUnitsBtn(); renderBoard(); updateCompareDrawer(); });
+  $('compareHeaderBtn').addEventListener('click', () => { state.compareOpen = !state.compareOpen; updateCompareDrawer(); });
+  $('clearCompareBtn').addEventListener('click', () => { state.compareIds.length = 0; state.compareOpen = false; updateCompareDrawer(); renderBoard(); });
+
+  document.querySelector('.shell').addEventListener('click', (e) => {
+    const btn = e.target.closest('button[data-action]'); if (!btn) return;
+    const a = btn.dataset.action;
+    if (a === 'pin' && btn.dataset.team) {
+      const t = btn.dataset.team;
+      state.pinnedKeys.has(t) ? state.pinnedKeys.delete(t) : state.pinnedKeys.add(t);
+      savePins(); renderBoard();
+    } else if (a === 'cmp') {
+      const i = state.compareIds.indexOf(btn.dataset.id);
+      if (i >= 0) state.compareIds.splice(i, 1);
+      else if (state.compareIds.length < 4) { state.compareIds.push(btn.dataset.id); state.compareOpen = true; }
+      updateCompareDrawer(); renderBoard();
+    } else if (a === 'toggle') {
+      const id = btn.dataset.id, card = btn.closest('.stadium-card');
+      const on = !state.expanded.has(id);
+      on ? state.expanded.add(id) : state.expanded.delete(id);
+      card.classList.toggle('expanded', on); btn.setAttribute('aria-expanded', on);
+    }
+  });
+
+  document.addEventListener('visibilitychange', () => { if (!document.hidden && Date.now() - state.lastLoad > 5 * 60e3) refreshSchedule(false); });
+  refreshSchedule(false);
+
+  if ('serviceWorker' in navigator) {
+    const hadController = !!navigator.serviceWorker.controller;
+    let refreshing = false;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (!hadController || refreshing) return; // no surprise reload on first install
+      refreshing = true; location.reload();
+    });
+    window.addEventListener('load', async () => {
+      try {
+        const reg = await navigator.serviceWorker.register('./sw.js', { scope: './' });
+        const prompt = (w) => {
+          if (w && navigator.serviceWorker.controller) {
+            $('updateBanner').classList.add('show');
+            $('reloadAppBtn').onclick = () => w.postMessage({ type: 'SKIP_WAITING' });
+          }
+        };
+        if (reg.waiting) prompt(reg.waiting);
+        reg.addEventListener('updatefound', () => {
+          const w = reg.installing; if (!w) return;
+          w.addEventListener('statechange', () => { if (w.state === 'installed') prompt(w); });
+        });
+      } catch (err) { console.warn('GameDayWX service worker registration failed:', err); }
+    });
+  }
+}
+init();
+})();
+
+  </script>
+</body>
+</html>
