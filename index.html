@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>GameDayWX — NCAA Football Stadium Weather</title>
+
+  <!-- PWA Manifest & Mobile Theme -->
+  <link rel="manifest" href="./manifest.json" />
+  <meta name="theme-color" content="#0057B8" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="GameDayWX" />
+
+  <!-- Icons -->
+  <link rel="icon" type="image/png" sizes="192x192" href="./icon-192.png" />
+  <link rel="icon" type="image/png" sizes="512x512" href="./icon-512.png" />
+  <link rel="apple-touch-icon" sizes="192x192" href="./icon-192.png" />
+
+  <style>
+    :root {
+      --bg-dark: #040914;
+      --surface: #0b1528;
+      --surface-2: #12213d;
+      --royal: #0057B8;
+      --royal-deep: #00387A;
+      --ok: #10B981;
+      --warn: #F59E0B;
+      --text: #F8FAFC;
+      --muted: #94A3B8;
+      --border: rgba(148, 163, 184, 0.18);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg-dark);
+      color: var(--text);
+      min-height: 100dvh;
+    }
+
+    .pwa-banner {
+      display: none;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 10px 16px;
+      font-size: 0.875rem;
+      background: var(--surface-2);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .pwa-banner.show { display: flex; }
+    .pwa-banner.offline { background: #3b1d06; border-bottom-color: var(--warn); }
+    .pwa-banner.update { background: #062e22; border-bottom-color: var(--ok); }
+
+    .pwa-btn {
+      background: var(--royal);
+      color: #fff;
+      border: 0;
+      border-radius: 6px;
+      padding: 6px 12px;
+      font-size: 0.8125rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    header.app-header {
+      background: linear-gradient(135deg, var(--royal), var(--royal-deep));
+      padding: 14px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.14);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 800;
+      font-size: 1.125rem;
+      letter-spacing: 0.02em;
+    }
+
+    .brand img {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+    }
+
+    .sync-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: rgba(4, 9, 20, 0.45);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .sync-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--ok);
+    }
+
+    main#app {
+      padding: 16px;
+      max-width: 1280px;
+      margin: 0 auto;
+    }
+  </style>
+</head>
+<body>
+  <div id="offlineBanner" class="pwa-banner offline" role="status" aria-live="polite">
+    <span>Offline mode — showing cached GameDayWX schedules and forecasts.</span>
+  </div>
+
+  <div id="updateBanner" class="pwa-banner update" role="status" aria-live="polite">
+    <span>A newer version of GameDayWX is ready.</span>
+    <button id="reloadAppBtn" class="pwa-btn" type="button">Reload</button>
+  </div>
+
+  <header class="app-header">
+    <div class="brand">
+      <img src="./icon-192.png" alt="GameDayWX icon" width="32" height="32" />
+      <span>GameDayWX</span>
+    </div>
+    <div class="sync-pill" id="syncStatus">
+      <span class="sync-dot" id="syncDot"></span>
+      <span id="syncText">PWA Ready</span>
+    </div>
+  </header>
+
+  <main id="app">
+    <!-- Place your GameDayWX controls, stadium cards, quarter-by-quarter forecast, comparison view, and modal here -->
+  </main>
+
+  <script>
+    // Place your GameDayWX application script here.
+    // Increment CACHE_VERSION in ./sw.js whenever you deploy an updated index.html.
+
+    (() => {
+      const offlineBanner = document.getElementById('offlineBanner');
+      const updateBanner = document.getElementById('updateBanner');
+      const reloadBtn = document.getElementById('reloadAppBtn');
+      const syncDot = document.getElementById('syncDot');
+      const syncText = document.getElementById('syncText');
+
+      function updateOnlineIndicator() {
+        const online = navigator.onLine;
+        offlineBanner.classList.toggle('show', !online);
+        if (syncDot && syncText) {
+          syncDot.style.background = online ? '#10B981' : '#F59E0B';
+          syncText.textContent = online ? 'Online' : 'Cached';
+        }
+      }
+
+      window.addEventListener('online', updateOnlineIndicator);
+      window.addEventListener('offline', updateOnlineIndicator);
+      updateOnlineIndicator();
+
+      if ('serviceWorker' in navigator) {
+        let refreshing = false;
+
+        navigator.serviceWorker.addEventListener('controllerchange', () => {
+          if (refreshing) return;
+          refreshing = true;
+          window.location.reload();
+        });
+
+        window.addEventListener('load', async () => {
+          try {
+            const registration = await navigator.serviceWorker.register('./sw.js', { scope: './' });
+
+            const promptIfWaiting = (worker) => {
+              if (worker && navigator.serviceWorker.controller) {
+                updateBanner.classList.add('show');
+                reloadBtn.onclick = () => worker.postMessage({ type: 'SKIP_WAITING' });
+              }
+            };
+
+            if (registration.waiting) {
+              promptIfWaiting(registration.waiting);
+            }
+
+            registration.addEventListener('updatefound', () => {
+              const newWorker = registration.installing;
+              if (!newWorker) return;
+              newWorker.addEventListener('statechange', () => {
+                if (newWorker.state === 'installed') {
+                  promptIfWaiting(newWorker);
+                }
+              });
+            });
+          } catch (err) {
+            console.warn('GameDayWX service worker registration failed:', err);
+          }
+        });
+      }
+    })();
+  </script>
+</body>
+</html>
