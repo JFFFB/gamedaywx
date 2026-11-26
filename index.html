@@ -1,0 +1,121 @@
+<script>
+  const CFBD_GAMES_URL = 'https://api.collegefootballdata.com/games';
+  // Optional: set your free CollegeFootballData API key here if calling directly from the browser
+  const CFBD_API_KEY = '';
+
+  const FALLBACK_GAMES_2026 = [
+    {
+      id: 'byu-cin-20261128',
+      week: 13,
+      kickoffIso: '2026-11-28T20:30:00Z',
+      matchup: 'Cincinnati at BYU',
+      homeTeam: 'BYU',
+      awayTeam: 'Cincinnati',
+      network: 'TBD',
+      stadium: {
+        name: 'LaVell Edwards Stadium',
+        city: 'Provo',
+        state: 'UT',
+        lat: 40.2575,
+        lon: -111.6545,
+        roof: 'Open',
+        surface: 'Grass'
+      }
+    }
+  ];
+
+  function normalizeCfbdGame(game, fallbackWeek) {
+    const startDate = game.start_date || game.startDate || '';
+    return {
+      id: String(game.id ?? `${game.away_team || game.awayTeam}-${game.home_team || game.homeTeam}-${startDate}`),
+      week: game.week ?? fallbackWeek ?? 13,
+      kickoffIso: startDate,
+      matchup: `${game.away_team || game.awayTeam || 'Away'} at ${game.home_team || game.homeTeam || 'Home'}`,
+      homeTeam: game.home_team || game.homeTeam || 'Home',
+      awayTeam: game.away_team || game.awayTeam || 'Away',
+      network: game.tv_broadcast || game.tvBroadcast || game.network || 'TBD',
+      stadium: {
+        name: game.venue || `${game.home_team || game.homeTeam || 'Home'} Stadium`,
+        city: game.city || '',
+        state: game.state || '',
+        lat: game.venue_latitude ?? game.venueLatitude ?? null,
+        lon: game.venue_longitude ?? game.venueLongitude ?? null,
+        roof: game.dome ? 'Indoor / Dome' : 'Open',
+        surface: 'TBD'
+      }
+    };
+  }
+
+  async function fetchOnlineSchedule2026({ week = 13, seasonType = 'regular', year = 2026 } = {}) {
+    const cacheKey = `gamedaywx_cfbd_${year}_${seasonType}_w${week}`;
+    const params = new URLSearchParams({
+      year: String(year),
+      week: String(week),
+      seasonType: String(seasonType)
+    });
+
+    const headers = { Accept: 'application/json' };
+    if (CFBD_API_KEY) {
+      headers.Authorization = `Bearer ${CFBD_API_KEY}`;
+    }
+
+    try {
+      const response = await fetch(`${CFBD_GAMES_URL}?${params.toString()}`, { headers });
+      if (!response.ok) {
+        throw new Error(`CFBD /games returned HTTP ${response.status}`);
+      }
+      const rawGames = await response.json();
+      const games = (Array.isArray(rawGames) ? rawGames : [])
+        .map((g) => normalizeCfbdGame(g, week))
+        .filter((g) => g.kickoffIso)
+        .sort((a, b) => new Date(a.kickoffIso) - new Date(b.kickoffIso));
+
+      if (!games.length) {
+        throw new Error('Empty game list returned');
+      }
+
+      localStorage.setItem(cacheKey, JSON.stringify({ savedAt: Date.now(), games }));
+      return games;
+    } catch (err) {
+      console.warn('Online schedule fetch fallback:', err.message);
+      try {
+        const cached = JSON.parse(localStorage.getItem(cacheKey) || 'null');
+        if (cached && Array.isArray(cached.games) && cached.games.length) {
+          return cached.games;
+        }
+      } catch (_) {}
+      return FALLBACK_GAMES_2026;
+    }
+  }
+
+  function renderScheduleList(games) {
+    const appEl = document.getElementById('app');
+    if (!appEl) return;
+
+    const itemsHtml = games
+      .map((g) => {
+        const kickoffText = new Date(g.kickoffIso).toLocaleString(undefined, {
+          weekday: 'short',
+          month: 'short',
+          day: 'numeric',
+          hour: 'numeric',
+          minute: '2-digit',
+          timeZoneName: 'short'
+        });
+        return `
+          <article style="padding:12px;border:1px solid rgba(148,163,184,0.2);border-radius:10px;margin-bottom:10px;background:#0b1528;">
+            <div style="font-weight:700;">${g.matchup}</div>
+            <div style="font-size:0.875rem;color:#94a3b8;margin-top:4px;">${kickoffText} • ${g.stadium.name}</div>
+          </article>
+        `;
+      })
+      .join('');
+
+    appEl.innerHTML = `<section><h2>Week ${games[0]?.week ?? 13} Schedule (${games.length})</h2>${itemsHtml}</section>`;
+  }
+
+  window.addEventListener('DOMContentLoaded', async () => {
+    const games = await fetchOnlineSchedule2026({ week: 13, seasonType: 'regular', year: 2026 });
+    renderScheduleList(games);
+  });
+</script>
