@@ -1,0 +1,1688 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>GameDayWX — NCAA Football Stadium Weather</title>
+
+  <!-- GitHub Pages PWA Manifest & Mobile Theme -->
+  <link rel="manifest" href="./manifest.json" />
+  <meta name="theme-color" content="#0057B8" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="GameDayWX" />
+
+  <!-- App Icons -->
+  <link rel="icon" type="image/png" sizes="192x192" href="./icon-192.png" />
+  <link rel="icon" type="image/png" sizes="512x512" href="./icon-512.png" />
+  <link rel="apple-touch-icon" sizes="192x192" href="./icon-192.png" />
+
+  <!-- Tailwind CSS & Inter Font -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif']
+          },
+          colors: {
+            void: '#040914',
+            card: '#0b1528',
+            cardElevated: '#11203b',
+            royal: '#0057B8',
+            royalDeep: '#00387A',
+            emeraldSync: '#10B981',
+            amberAlert: '#F59E0B'
+          }
+        }
+      }
+    };
+  </script>
+
+  <style>
+    * {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      background-color: #040914;
+      color: #F8FAFC;
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      overflow-x: hidden;
+    }
+
+    /* Custom subtle scrollbars for horizontal week/conference strips */
+    .no-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+    .no-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+
+    /* Glass & Sports Telemetry Elevation */
+    .telemetry-card {
+      background: linear-gradient(180deg, rgba(16, 31, 58, 0.92) 0%, rgba(11, 21, 40, 0.98) 100%);
+      border: 1px solid rgba(148, 163, 184, 0.14);
+      transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+    }
+
+    .telemetry-card:hover {
+      border-color: rgba(59, 130, 246, 0.45);
+      box-shadow: 0 12px 28px -10px rgba(0, 87, 184, 0.35);
+    }
+
+    @keyframes pulseDot {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.45; transform: scale(0.88); }
+    }
+
+    .live-pulse {
+      animation: pulseDot 2.2s infinite ease-in-out;
+    }
+  </style>
+</head>
+<body class="min-h-screen bg-void text-slate-50 antialiased selection:bg-royal selection:text-white">
+
+  <!-- Offline Status Banner -->
+  <div id="offlineBanner" class="hidden bg-amber-950/95 border-b border-amber-500/50 px-4 py-2.5 text-xs sm:text-sm text-amber-100 flex items-center justify-between gap-3" role="status" aria-live="polite">
+    <div class="flex items-center gap-2">
+      <span class="inline-block w-2 h-2 rounded-full bg-amber-400"></span>
+      <span><strong>Offline Mode:</strong> Displaying cached GameDayWX schedules &amp; stadium telemetry.</span>
+    </div>
+  </div>
+
+  <!-- Service Worker Update Banner -->
+  <div id="updateBanner" class="hidden bg-emerald-950/95 border-b border-emerald-500/50 px-4 py-2.5 text-xs sm:text-sm text-emerald-100 flex items-center justify-between gap-3" role="status" aria-live="polite">
+    <span>A newer version of <strong>GameDayWX</strong> is ready.</span>
+    <button id="reloadAppBtn" type="button" class="px-3 py-1.5 rounded-lg bg-royal hover:bg-blue-600 text-white font-semibold text-xs transition shadow-sm">
+      Reload
+    </button>
+  </div>
+
+  <!-- Royal Blue Gradient Header -->
+  <header class="sticky top-0 z-30 bg-gradient-to-r from-[#0057B8] to-[#00387A] border-b border-white/15 shadow-lg shadow-blue-950/40">
+    <div class="max-w-7xl mx-auto px-4 py-3 sm:py-3.5 flex items-center justify-between gap-3">
+      <!-- Brand + Inline Radar-Football SVG Icon -->
+      <div class="flex items-center gap-3 min-w-0">
+        <div class="w-10 h-10 sm:w-11 sm:h-11 rounded-xl shadow-md ring-1 ring-white/25 shrink-0 overflow-hidden bg-[#004494]" aria-hidden="true">
+          <svg viewBox="0 0 192 192" class="w-full h-full" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <linearGradient id="iconRoyalGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#0066D6" />
+                <stop offset="100%" stop-color="#002D6B" />
+              </linearGradient>
+            </defs>
+            <rect width="192" height="192" rx="40" fill="url(#iconRoyalGrad)" />
+            <!-- Outer white radar/wind arc -->
+            <path d="M 48 134 A 66 66 0 0 1 92 38" fill="none" stroke="#FFFFFF" stroke-width="13" stroke-linecap="round" />
+            <!-- Inner white radar/wind arc -->
+            <path d="M 73 125 A 40 40 0 0 1 101 66" fill="none" stroke="#FFFFFF" stroke-width="13" stroke-linecap="round" />
+            <!-- Amber sun dot -->
+            <circle cx="115" cy="36" r="11" fill="#FBBF24" />
+            <!-- Angled white football with royal stripes & amber laces -->
+            <g transform="translate(124, 114) rotate(-42)">
+              <path d="M -42 0 C -24 -25, 24 -25, 42 0 C 24 25, -24 25, -42 0 Z" fill="#FFFFFF" />
+              <!-- End stripes -->
+              <rect x="-27" y="-17" width="5" height="34" fill="#00387A" />
+              <rect x="22" y="-17" width="5" height="34" fill="#00387A" />
+              <!-- Amber laces -->
+              <line x1="-13" y1="0" x2="13" y2="0" stroke="#F59E0B" stroke-width="4.5" stroke-linecap="round" />
+              <line x1="-9" y1="-6" x2="-9" y2="6" stroke="#F59E0B" stroke-width="3.5" stroke-linecap="round" />
+              <line x1="-3" y1="-6" x2="-3" y2="6" stroke="#F59E0B" stroke-width="3.5" stroke-linecap="round" />
+              <line x1="3" y1="-6" x2="3" y2="6" stroke="#F59E0B" stroke-width="3.5" stroke-linecap="round" />
+              <line x1="9" y1="-6" x2="9" y2="6" stroke="#F59E0B" stroke-width="3.5" stroke-linecap="round" />
+            </g>
+          </svg>
+        </div>
+
+        <div class="truncate">
+          <div class="flex items-center gap-2">
+            <h1 class="text-lg sm:text-xl font-black tracking-tight text-white leading-none">GameDayWX</h1>
+            <span class="hidden sm:inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider bg-white/15 text-blue-100">
+              2026 FBS
+            </span>
+          </div>
+          <p class="text-[11px] sm:text-xs text-blue-100/90 font-medium mt-0.5 truncate">NCAA Football Stadium Weather</p>
+        </div>
+      </div>
+
+      <!-- Live Telemetry Sync Indicator & Refresh -->
+      <div class="flex items-center gap-2 shrink-0">
+        <button id="refreshWeatherBtn" type="button" title="Refresh Open-Meteo Telemetry" class="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white border border-white/15 transition active:scale-95" aria-label="Refresh telemetry">
+          <svg id="refreshIcon" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+          </svg>
+        </button>
+
+        <div id="syncBadge" class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#040914]/55 border border-emerald-400/35 text-xs font-semibold text-emerald-300 shadow-inner">
+          <span id="syncDot" class="w-2 h-2 rounded-full bg-[#10B981] live-pulse"></span>
+          <span id="syncText" class="whitespace-nowrap">Live Telemetry Synced</span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Workspace -->
+  <main id="app" class="max-w-7xl mx-auto px-4 pt-4 pb-24 space-y-4">
+
+    <!-- Top Control Panel: Week Strip, Search, Conference Pills & View Mode -->
+    <section class="rounded-2xl bg-card border border-slate-800/90 p-3.5 sm:p-4 shadow-xl space-y-3.5">
+
+      <!-- Row 1: Week Selector Strip (Weeks 1–13) -->
+      <div>
+        <div class="flex items-center justify-between mb-2">
+          <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400">2026 Season Schedule</span>
+          <span id="weekDateRangeLabel" class="text-xs font-semibold text-blue-400">Week 13 · Rivalry Week (Nov 26–28)</span>
+        </div>
+        <div id="weekSelector" class="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1" role="tablist" aria-label="Select NCAA Week">
+          <!-- Populated dynamically for Weeks 1–13 -->
+        </div>
+      </div>
+
+      <!-- Row 2: Search + View Mode Toggle -->
+      <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
+        <div class="relative flex-1">
+          <svg class="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35m0 0A7.5 7.5 0 103.5 10.5a7.5 7.5 0 0013.15 6.15z" />
+          </svg>
+          <input
+            id="searchInput"
+            type="search"
+            placeholder="Search team, stadium, city, or TV (e.g., BYU, Provo, Big 12, ABC)..."
+            class="w-full pl-10 pr-9 py-2.5 rounded-xl bg-[#040914] border border-slate-700/80 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-royal focus:ring-1 focus:ring-royal transition"
+          />
+          <button id="clearSearchBtn" type="button" class="hidden absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white p-1 text-xs font-bold" aria-label="Clear search">✕</button>
+        </div>
+
+        <!-- Cards vs Side-by-Side Comparison Toggle -->
+        <div class="inline-flex rounded-xl bg-[#040914] p-1 border border-slate-800 shrink-0">
+          <button id="viewCardsBtn" type="button" class="flex-1 sm:flex-initial px-3.5 py-2 rounded-lg text-xs font-bold transition bg-royal text-white shadow">
+            Stadium Cards
+          </button>
+          <button id="viewCompareBtn" type="button" class="flex-1 sm:flex-initial px-3.5 py-2 rounded-lg text-xs font-bold transition text-slate-400 hover:text-white flex items-center justify-center gap-1.5">
+            <span>Compare</span>
+            <span id="compareCountPill" class="px-1.5 py-0.2 rounded-full bg-slate-800 text-[10px] text-blue-300">0</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Row 3: Conference Filter Pills -->
+      <div class="flex items-center justify-between gap-2 pt-0.5">
+        <div id="conferencePills" class="flex items-center gap-1.5 overflow-x-auto no-scrollbar" role="group" aria-label="Filter by conference">
+          <!-- Populated dynamically -->
+        </div>
+
+        <div class="hidden md:flex items-center gap-2 text-xs text-slate-400 shrink-0">
+          <span id="resultsSummary">Showing 0 matchups</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Summary Strip: Severe Weather & Telemetry Quick Stats -->
+    <section id="alertSummaryBar" class="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+      <div class="rounded-xl bg-card border border-slate-800/80 px-3.5 py-2.5">
+        <div class="text-[11px] text-slate-400 font-medium">Matchups Listed</div>
+        <div id="statTotalGames" class="text-lg font-extrabold text-white mt-0.5">--</div>
+      </div>
+      <div class="rounded-xl bg-card border border-slate-800/80 px-3.5 py-2.5">
+        <div class="text-[11px] text-slate-400 font-medium">Weather Alerts</div>
+        <div id="statAlertsCount" class="text-lg font-extrabold text-amber-400 mt-0.5">--</div>
+      </div>
+      <div class="rounded-xl bg-card border border-slate-800/80 px-3.5 py-2.5">
+        <div class="text-[11px] text-slate-400 font-medium">Coldest Kickoff</div>
+        <div id="statColdest" class="text-sm sm:text-base font-extrabold text-sky-300 mt-0.5 truncate">--</div>
+      </div>
+      <div class="rounded-xl bg-card border border-slate-800/80 px-3.5 py-2.5">
+        <div class="text-[11px] text-slate-400 font-medium">Peak In-Game Gust</div>
+        <div id="statWindiest" class="text-sm sm:text-base font-extrabold text-amber-300 mt-0.5 truncate">--</div>
+      </div>
+    </section>
+
+    <!-- Cards Grid View -->
+    <section id="cardsGridView" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4" aria-live="polite">
+      <!-- Game cards injected here -->
+    </section>
+
+    <!-- Empty State -->
+    <div id="emptyState" class="hidden rounded-2xl bg-card border border-slate-800 p-10 text-center space-y-3">
+      <div class="text-3xl">🏟️</div>
+      <h2 class="text-base font-bold text-white">No stadium matchups match your filters</h2>
+      <p class="text-xs text-slate-400 max-w-md mx-auto">Try clearing your search query, switching conferences, or selecting another week from the 2026 schedule.</p>
+      <button id="resetFiltersBtn" type="button" class="px-4 py-2 rounded-xl bg-royal hover:bg-blue-600 text-xs font-bold text-white transition">
+        Reset All Filters
+      </button>
+    </div>
+
+    <!-- Side-by-Side Comparison View -->
+    <section id="compareView" class="hidden space-y-4">
+      <div class="rounded-2xl bg-card border border-slate-800 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div>
+          <h2 class="text-base font-extrabold text-white">Side-by-Side Stadium Weather Comparison</h2>
+          <p class="text-xs text-slate-400 mt-0.5">Select 2 to 4 matchups using the <span class="text-blue-400 font-semibold">Compare</span> toggle on any game card.</p>
+        </div>
+        <div class="flex items-center gap-2">
+          <button id="autoFillCompareBtn" type="button" class="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-200 transition">
+            Auto-Pick Top 3
+          </button>
+          <button id="clearCompareBtn" type="button" class="px-3 py-2 rounded-xl bg-rose-950/60 hover:bg-rose-900/70 border border-rose-500/30 text-xs font-semibold text-rose-200 transition">
+            Clear Selected
+          </button>
+        </div>
+      </div>
+
+      <div id="compareContainer" class="overflow-x-auto pb-2">
+        <!-- Comparison columns / table rendered here -->
+      </div>
+    </section>
+  </main>
+
+  <!-- Floating Comparison Tray (when 1+ games selected in Cards View) -->
+  <div id="floatingCompareBar" class="hidden fixed bottom-4 left-1/2 -translate-x-1/2 z-30 w-[92%] max-w-xl rounded-2xl bg-[#0b1528]/95 backdrop-blur-md border border-blue-500/40 px-4 py-3 shadow-2xl flex items-center justify-between gap-3">
+    <div class="text-xs sm:text-sm">
+      <span class="font-bold text-white" id="floatingCompareText">2 games selected</span>
+      <span class="text-slate-400 hidden sm:inline"> · Compare kickoff &amp; Q1–Q4 weather</span>
+    </div>
+    <div class="flex items-center gap-2">
+      <button id="floatingClearBtn" type="button" class="px-2.5 py-1.5 rounded-lg text-xs font-semibold text-slate-300 hover:text-white">
+        Clear
+      </button>
+      <button id="floatingOpenCompareBtn" type="button" class="px-3.5 py-1.5 rounded-lg bg-royal hover:bg-blue-600 text-xs font-bold text-white shadow">
+        Compare Now →
+      </button>
+    </div>
+  </div>
+
+  <!-- Quarter-by-Quarter Detail Modal / Bottom Drawer -->
+  <div id="gameModal" class="hidden fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/75 backdrop-blur-sm p-0 sm:p-4" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <div class="w-full max-w-2xl max-h-[92vh] overflow-y-auto rounded-t-3xl sm:rounded-3xl bg-[#0b1528] border border-slate-700/80 shadow-2xl">
+      <!-- Modal Sticky Header -->
+      <div class="sticky top-0 z-10 bg-gradient-to-r from-[#0057B8] to-[#00387A] px-5 py-4 flex items-start justify-between gap-3 border-b border-white/15">
+        <div>
+          <div id="modalMetaBadge" class="text-[11px] font-bold uppercase tracking-wider text-blue-100/90">Week 13 · Saturday · ABC</div>
+          <h2 id="modalTitle" class="text-lg sm:text-xl font-black text-white mt-0.5">Away @ Home</h2>
+          <p id="modalStadiumLine" class="text-xs text-blue-100 mt-0.5">Stadium · City · Elevation</p>
+        </div>
+        <button id="closeModalBtn" type="button" class="p-2 rounded-xl bg-black/25 hover:bg-black/40 text-white transition" aria-label="Close forecast details">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+
+      <!-- Modal Body -->
+      <div id="modalBody" class="p-5 space-y-5">
+        <!-- Populated dynamically -->
+      </div>
+    </div>
+  </div>
+
+  <script>
+    /**
+     * GameDayWX — NCAA Football Stadium Weather PWA
+     * Self-contained 2026 Season Schedule (Weeks 1–13), Open-Meteo Live & Historical API Engine,
+     * Quarter-by-Quarter Breakdown (~50 min/quarter), Favorites, and Side-by-Side Comparison.
+     */
+
+    // =========================================================================
+    // 1. STADIUM DIRECTORY (Accurate Coordinates, Elevation, Surface, Roof)
+    // =========================================================================
+    const STADIUMS = {
+      byu: {
+        id: 'byu',
+        team: 'BYU Cougars',
+        short: 'BYU',
+        conf: 'Big 12',
+        stadium: 'LaVell Edwards Stadium',
+        city: 'Provo, UT',
+        lat: 40.2575,
+        lon: -111.6545,
+        elev: 4630,
+        surface: 'Natural Grass',
+        roof: 'Open Air'
+      },
+      utah: {
+        id: 'utah',
+        team: 'Utah Utes',
+        short: 'Utah',
+        conf: 'Big 12',
+        stadium: 'Rice-Eccles Stadium',
+        city: 'Salt Lake City, UT',
+        lat: 40.7599,
+        lon: -111.8488,
+        elev: 4657,
+        surface: 'FieldTurf',
+        roof: 'Open Air'
+      },
+      kansas: {
+        id: 'kansas',
+        team: 'Kansas Jayhawks',
+        short: 'Kansas',
+        conf: 'Big 12',
+        stadium: 'David Booth Kansas Memorial Stadium',
+        city: 'Lawrence, KS',
+        lat: 38.9629,
+        lon: -95.2463,
+        elev: 885,
+        surface: 'FieldTurf',
+        roof: 'Open Air'
+      },
+      ksu: {
+        id: 'ksu',
+        team: 'Kansas State Wildcats',
+        short: 'Kansas St',
+        conf: 'Big 12',
+        stadium: 'Bill Snyder Family Stadium',
+        city: 'Manhattan, KS',
+        lat: 39.2020,
+        lon: -96.5938,
+        elev: 1065,
+        surface: 'AstroTurf',
+        roof: 'Open Air'
+      },
+      isu: {
+        id: 'isu',
+        team: 'Iowa State Cyclones',
+        short: 'Iowa St',
+        conf: 'Big 12',
+        stadium: 'Jack Trice Stadium',
+        city: 'Ames, IA',
+        lat: 42.0140,
+        lon: -93.6358,
+        elev: 922,
+        surface: 'Natural Grass',
+        roof: 'Open Air'
+      },
+      ttu: {
+        id: 'ttu',
+        team: 'Texas Tech Red Raiders',
+        short: 'Texas Tech',
+        conf: 'Big 12',
+        stadium: 'Jones AT&T Stadium',
+        city: 'Lubbock, TX',
+        lat: 33.5910,
+        lon: -101.8729,
+        elev: 3215,
+        surface: 'FieldTurf',
+        roof: 'Open Air'
+      },
+      colorado: {
+        id: 'colorado',
+        team: 'Colorado Buffaloes',
+        short: 'Colorado',
+        conf: 'Big 12',
+        stadium: 'Folsom Field',
+        city: 'Boulder, CO',
+        lat: 40.0095,
+        lon: -105.2669,
+        elev: 5360,
+        surface: 'Natural Grass',
+        roof: 'Open Air'
+      },
+      baylor: {
+        id: 'baylor',
+        team: 'Baylor Bears',
+        short: 'Baylor',
+        conf: 'Big 12',
+        stadium: 'McLane Stadium',
+        city: 'Waco, TX',
+        lat: 31.5582,
+        lon: -97.1157,
+        elev: 405,
+        surface: 'FieldTurf',
+        roof: 'Open Air'
+      },
+      tcu: {
+        id: 'tcu',
+        team: 'TCU Horned Frogs',
+        short: 'TCU',
+        conf: 'Big 12',
+        stadium: 'Amon G. Carter Stadium',
+        city: 'Fort Worth, TX',
+        lat: 32.7097,
+        lon: -97.3681,
+        elev: 615,
+        surface: 'Natural Grass',
+        roof: 'Open Air'
+      },
+      osu: {
+        id: 'osu',
+        team: 'Ohio State Buckeyes',
+        short: 'Ohio State',
+        conf: 'Big Ten',
+        stadium: 'Ohio Stadium',
+        city: 'Columbus, OH',
+        lat: 40.0016,
+        lon: -83.0197,
+        elev: 740,
+        surface: 'Shaw Sports Turf',
+        roof: 'Open Air'
+      },
+      mich: {
+        id: 'mich',
+        team: 'Michigan Wolverines',
+        short: 'Michigan',
+        conf: 'Big Ten',
+        stadium: 'Michigan Stadium',
+        city: 'Ann Arbor, MI',
+        lat: 42.2658,
+        lon: -83.7487,
+        elev: 830,
+        surface: 'FieldTurf',
+        roof: 'Open Air'
+      },
+      psu: {
+        id: 'psu',
+        team: 'Penn State Nittany Lions',
+        short: 'Penn State',
+        conf: 'Big Ten',
+        stadium: 'Beaver Stadium',
+        city: 'University Park, PA',
+        lat: 40.8122,
+        lon: -77.8561,
+        elev: 1155,
+        surface: 'Natural Grass',
+        roof: 'Open Air'
+      },
+      oregon: {
+        id: 'oregon',
+        team: 'Oregon Ducks',
+        short: 'Oregon',
+        conf: 'Big Ten',
+        stadium: 'Autzen Stadium',
+        city: 'Eugene, OR',
+        lat: 44.0582,
+        lon: -123.0685,
+        elev: 425,
+        surface: 'FieldTurf',
+        roof: 'Open Air'
+      },
+      bama: {
+        id: 'bama',
+        team: 'Alabama Crimson Tide',
+        short: 'Alabama',
+        conf: 'SEC',
+        stadium: 'Bryant-Denny Stadium',
+        city: 'Tuscaloosa, AL',
+        lat: 33.2084,
+        lon: -87.5504,
+        elev: 225,
+        surface: 'Natural Grass',
+        roof: 'Open Air'
+      },
+      uga: {
+        id: 'uga',
+        team: 'Georgia Bulldogs',
+        short: 'Georgia',
+        conf: 'SEC',
+        stadium: 'Sanford Stadium',
+        city: 'Athens, GA',
+        lat: 33.9498,
+        lon: -83.3734,
+        elev: 640,
+        surface: 'Natural Grass',
+        roof: 'Open Air'
+      },
+      texas: {
+        id: 'texas',
+        team: 'Texas Longhorns',
+        short: 'Texas',
+        conf: 'SEC',
+        stadium: 'DKR-Texas Memorial Stadium',
+        city: 'Austin, TX',
+        lat: 30.2837,
+        lon: -97.7325,
+        elev: 525,
+        surface: 'FieldTurf',
+        roof: 'Open Air'
+      },
+      lsu: {
+        id: 'lsu',
+        team: 'LSU Tigers',
+        short: 'LSU',
+        conf: 'SEC',
+        stadium: 'Tiger Stadium',
+        city: 'Baton Rouge, LA',
+        lat: 30.4120,
+        lon: -91.1838,
+        elev: 35,
+        surface: 'Natural Grass',
+        roof: 'Open Air'
+      },
+      tenn: {
+        id: 'tenn',
+        team: 'Tennessee Volunteers',
+        short: 'Tennessee',
+        conf: 'SEC',
+        stadium: 'Neyland Stadium',
+        city: 'Knoxville, TN',
+        lat: 35.9550,
+        lon: -83.9250,
+        elev: 870,
+        surface: 'Natural Grass',
+        roof: 'Open Air'
+      },
+      clemson: {
+        id: 'clemson',
+        team: 'Clemson Tigers',
+        short: 'Clemson',
+        conf: 'ACC',
+        stadium: 'Memorial Stadium',
+        city: 'Clemson, SC',
+        lat: 34.6788,
+        lon: -82.8432,
+        elev: 685,
+        surface: 'Natural Grass',
+        roof: 'Open Air'
+      },
+      fsu: {
+        id: 'fsu',
+        team: 'Florida State Seminoles',
+        short: 'Florida St',
+        conf: 'ACC',
+        stadium: 'Doak Campbell Stadium',
+        city: 'Tallahassee, FL',
+        lat: 30.4381,
+        lon: -84.3044,
+        elev: 95,
+        surface: 'Natural Grass',
+        roof: 'Open Air'
+      },
+      nd: {
+        id: 'nd',
+        team: 'Notre Dame Fighting Irish',
+        short: 'Notre Dame',
+        conf: 'Independent',
+        stadium: 'Notre Dame Stadium',
+        city: 'South Bend, IN',
+        lat: 41.6984,
+        lon: -86.2339,
+        elev: 735,
+        surface: 'FieldTurf',
+        roof: 'Open Air'
+      }
+    };
+
+    // =========================================================================
+    // 2. 2026 NCAA FOOTBALL SCHEDULE DATASET (Weeks 1–13 with Broadcast TV)
+    // =========================================================================
+    const WEEKS_META = [
+      { week: 1, label: 'Wk 1', range: 'Sep 3–5, 2026 · Kickoff Weekend' },
+      { week: 2, label: 'Wk 2', range: 'Sep 12, 2026 · Non-Con Showdowns' },
+      { week: 3, label: 'Wk 3', range: 'Sep 19, 2026 · Early Rivalry Slate' },
+      { week: 4, label: 'Wk 4', range: 'Sep 26, 2026 · Conference Openers' },
+      { week: 5, label: 'Wk 5', range: 'Oct 3, 2026 · Autumn Opener' },
+      { week: 6, label: 'Wk 6', range: 'Oct 10, 2026 · Red River & Big 12' },
+      { week: 7, label: 'Wk 7', range: 'Oct 17, 2026 · Midseason Clash' },
+      { week: 8, label: 'Wk 8', range: 'Oct 24, 2026 · Third Saturday Slate' },
+      { week: 9, label: 'Wk 9', range: 'Oct 31, 2026 · Halloween Night Games' },
+      { week: 10, label: 'Wk 10', range: 'Nov 7, 2026 · CFP Rankings Debut' },
+      { week: 11, label: 'Wk 11', range: 'Nov 14, 2026 · November Grit' },
+      { week: 12, label: 'Wk 12', range: 'Nov 21, 2026 · Penultimate Saturday' },
+      { week: 13, label: 'Wk 13', range: 'Nov 26–28, 2026 · Rivalry Week' }
+    ];
+
+    const GAMES = [
+      // WEEK 1 (Sep 3–5, 2026)
+      { id: 'w1-byu', week: 1, date: '2026-09-05', kickoffHour: 20, kickoffDisplay: '8:15 PM MT', tv: 'ESPN', away: 'Utah State', homeId: 'byu' },
+      { id: 'w1-osu', week: 1, date: '2026-09-05', kickoffHour: 12, kickoffDisplay: '12:00 PM ET', tv: 'FOX', away: 'Texas', homeId: 'osu' },
+      { id: 'w1-uga', week: 1, date: '2026-09-05', kickoffHour: 15, kickoffDisplay: '3:30 PM ET', tv: 'ABC', away: 'Clemson', homeId: 'uga' },
+      { id: 'w1-kansas', week: 1, date: '2026-09-05', kickoffHour: 18, kickoffDisplay: '6:00 PM CT', tv: 'FS1', away: 'Fresno State', homeId: 'kansas' },
+      { id: 'w1-nd', week: 1, date: '2026-09-05', kickoffHour: 19, kickoffDisplay: '7:30 PM ET', tv: 'NBC', away: 'Miami (FL)', homeId: 'nd' },
+      { id: 'w1-oregon', week: 1, date: '2026-09-05', kickoffHour: 16, kickoffDisplay: '4:30 PM PT', tv: 'CBS', away: 'Boise State', homeId: 'oregon' },
+
+      // WEEK 2 (Sep 12, 2026)
+      { id: 'w2-mich', week: 2, date: '2026-09-12', kickoffHour: 12, kickoffDisplay: '12:00 PM ET', tv: 'FOX', away: 'Oklahoma', homeId: 'mich' },
+      { id: 'w2-isu', week: 2, date: '2026-09-12', kickoffHour: 14, kickoffDisplay: '2:30 PM CT', tv: 'CBS', away: 'Iowa (Cy-Hawk)', homeId: 'isu' },
+      { id: 'w2-bama', week: 2, date: '2026-09-12', kickoffHour: 18, kickoffDisplay: '6:30 PM CT', tv: 'ABC', away: 'Wisconsin', homeId: 'bama' },
+      { id: 'w2-utah', week: 2, date: '2026-09-12', kickoffHour: 20, kickoffDisplay: '8:00 PM MT', tv: 'ESPN', away: 'Baylor', homeId: 'utah' },
+      { id: 'w2-clemson', week: 2, date: '2026-09-12', kickoffHour: 15, kickoffDisplay: '3:30 PM ET', tv: 'ESPN2', away: 'App State', homeId: 'clemson' },
+
+      // WEEK 3 (Sep 19, 2026)
+      { id: 'w3-byu', week: 3, date: '2026-09-19', kickoffHour: 19, kickoffDisplay: '7:00 PM MT', tv: 'ESPN', away: 'Arizona', homeId: 'byu' },
+      { id: 'w3-lsu', week: 3, date: '2026-09-19', kickoffHour: 19, kickoffDisplay: '7:30 PM CT', tv: 'ABC', away: 'UCLA', homeId: 'lsu' },
+      { id: 'w3-colorado', week: 3, date: '2026-09-19', kickoffHour: 13, kickoffDisplay: '1:30 PM MT', tv: 'FOX', away: 'Colorado State', homeId: 'colorado' },
+      { id: 'w3-psu', week: 3, date: '2026-09-19', kickoffHour: 15, kickoffDisplay: '3:30 PM ET', tv: 'CBS', away: 'West Virginia', homeId: 'psu' },
+      { id: 'w3-fsu', week: 3, date: '2026-09-19', kickoffHour: 12, kickoffDisplay: '12:00 PM ET', tv: 'ABC', away: 'Memphis', homeId: 'fsu' },
+
+      // WEEK 4 (Sep 26, 2026)
+      { id: 'w4-ksu', week: 4, date: '2026-09-26', kickoffHour: 19, kickoffDisplay: '7:00 PM CT', tv: 'FOX', away: 'BYU', homeId: 'ksu' },
+      { id: 'w4-texas', week: 4, date: '2026-09-26', kickoffHour: 18, kickoffDisplay: '6:30 PM CT', tv: 'ABC', away: 'Mississippi State', homeId: 'texas' },
+      { id: 'w4-tenn', week: 4, date: '2026-09-26', kickoffHour: 15, kickoffDisplay: '3:30 PM ET', tv: 'CBS', away: 'Florida', homeId: 'tenn' },
+      { id: 'w4-ttu', week: 4, date: '2026-09-26', kickoffHour: 14, kickoffDisplay: '2:30 PM CT', tv: 'FS1', away: 'Arizona State', homeId: 'ttu' },
+      { id: 'w4-nd', week: 4, date: '2026-09-26', kickoffHour: 15, kickoffDisplay: '3:30 PM ET', tv: 'NBC', away: 'Louisville', homeId: 'nd' },
+
+      // WEEK 5 (Oct 3, 2026)
+      { id: 'w5-baylor', week: 5, date: '2026-10-03', kickoffHour: 11, kickoffDisplay: '11:00 AM CT', tv: 'ESPN2', away: 'BYU', homeId: 'baylor' },
+      { id: 'w5-bama', week: 5, date: '2026-10-03', kickoffHour: 18, kickoffDisplay: '6:30 PM CT', tv: 'ABC', away: 'Georgia', homeId: 'bama' },
+      { id: 'w5-oregon', week: 5, date: '2026-10-03', kickoffHour: 16, kickoffDisplay: '4:30 PM PT', tv: 'NBC', away: 'Michigan State', homeId: 'oregon' },
+      { id: 'w5-kansas', week: 5, date: '2026-10-03', kickoffHour: 14, kickoffDisplay: '2:30 PM CT', tv: 'TNT', away: 'TCU', homeId: 'kansas' },
+      { id: 'w5-clemson', week: 5, date: '2026-10-03', kickoffHour: 19, kickoffDisplay: '7:30 PM ET', tv: 'ESPN', away: 'NC State', homeId: 'clemson' },
+
+      // WEEK 6 (Oct 10, 2026)
+      { id: 'w6-byu', week: 6, date: '2026-10-10', kickoffHour: 14, kickoffDisplay: '2:00 PM MT', tv: 'FOX', away: 'Oklahoma State', homeId: 'byu' },
+      { id: 'w6-osu', week: 6, date: '2026-10-10', kickoffHour: 19, kickoffDisplay: '7:30 PM ET', tv: 'NBC', away: 'Iowa', homeId: 'osu' },
+      { id: 'w6-lsu', week: 6, date: '2026-10-10', kickoffHour: 18, kickoffDisplay: '6:30 PM CT', tv: 'ABC', away: 'Ole Miss', homeId: 'lsu' },
+      { id: 'w6-colorado', week: 6, date: '2026-10-10', kickoffHour: 20, kickoffDisplay: '8:15 PM MT', tv: 'ESPN', away: 'Kansas State', homeId: 'colorado' },
+      { id: 'w6-fsu', week: 6, date: '2026-10-10', kickoffHour: 15, kickoffDisplay: '3:30 PM ET', tv: 'ESPN2', away: 'Duke', homeId: 'fsu' },
+
+      // WEEK 7 (Oct 17, 2026)
+      { id: 'w7-utah', week: 7, date: '2026-10-17', kickoffHour: 20, kickoffDisplay: '8:15 PM MT', tv: 'ESPN', away: 'TCU', homeId: 'utah' },
+      { id: 'w7-texas', week: 7, date: '2026-10-17', kickoffHour: 18, kickoffDisplay: '6:30 PM CT', tv: 'ABC', away: 'Georgia', homeId: 'texas' },
+      { id: 'w7-psu', week: 7, date: '2026-10-17', kickoffHour: 19, kickoffDisplay: '7:30 PM ET', tv: 'NBC', away: 'USC', homeId: 'psu' },
+      { id: 'w7-isu', week: 7, date: '2026-10-17', kickoffHour: 14, kickoffDisplay: '2:30 PM CT', tv: 'FS1', away: 'UCF', homeId: 'isu' },
+      { id: 'w7-tenn', week: 7, date: '2026-10-17', kickoffHour: 15, kickoffDisplay: '3:30 PM ET', tv: 'ABC', away: 'Alabama', homeId: 'tenn' },
+
+      // WEEK 8 (Oct 24, 2026)
+      { id: 'w8-byu', week: 8, date: '2026-10-24', kickoffHour: 13, kickoffDisplay: '1:30 PM MT', tv: 'FOX', away: 'Kansas State', homeId: 'byu' },
+      { id: 'w8-mich', week: 8, date: '2026-10-24', kickoffHour: 19, kickoffDisplay: '7:30 PM ET', tv: 'NBC', away: 'Michigan State', homeId: 'mich' },
+      { id: 'w8-ttu', week: 8, date: '2026-10-24', kickoffHour: 14, kickoffDisplay: '2:30 PM CT', tv: 'ESPN2', away: 'Baylor', homeId: 'ttu' },
+      { id: 'w8-nd', week: 8, date: '2026-10-24', kickoffHour: 15, kickoffDisplay: '3:30 PM ET', tv: 'NBC', away: 'Navy', homeId: 'nd' },
+      { id: 'w8-uga', week: 8, date: '2026-10-24', kickoffHour: 15, kickoffDisplay: '3:30 PM ET', tv: 'CBS', away: 'Auburn', homeId: 'uga' },
+
+      // WEEK 9 (Oct 31, 2026)
+      { id: 'w9-tcu', week: 9, date: '2026-10-31', kickoffHour: 18, kickoffDisplay: '6:30 PM CT', tv: 'ESPN', away: 'BYU', homeId: 'tcu' },
+      { id: 'w9-osu', week: 9, date: '2026-10-31', kickoffHour: 12, kickoffDisplay: '12:00 PM ET', tv: 'FOX', away: 'Penn State', homeId: 'osu' },
+      { id: 'w9-oregon', week: 9, date: '2026-10-31', kickoffHour: 19, kickoffDisplay: '7:30 PM PT', tv: 'CBS', away: 'Washington', homeId: 'oregon' },
+      { id: 'w9-kansas', week: 9, date: '2026-10-31', kickoffHour: 14, kickoffDisplay: '2:30 PM CT', tv: 'FS1', away: 'Colorado', homeId: 'kansas' },
+      { id: 'w9-clemson', week: 9, date: '2026-10-31', kickoffHour: 19, kickoffDisplay: '7:30 PM ET', tv: 'ABC', away: 'Louisville', homeId: 'clemson' },
+
+      // WEEK 10 (Nov 7, 2026)
+      { id: 'w10-utah', week: 10, date: '2026-11-07', kickoffHour: 20, kickoffDisplay: '8:15 PM MT', tv: 'ESPN', away: 'BYU (Holy War)', homeId: 'utah' },
+      { id: 'w10-lsu', week: 10, date: '2026-11-07', kickoffHour: 18, kickoffDisplay: '6:30 PM CT', tv: 'ABC', away: 'Alabama', homeId: 'lsu' },
+      { id: 'w10-ksu', week: 10, date: '2026-11-07', kickoffHour: 14, kickoffDisplay: '2:30 PM CT', tv: 'FOX', away: 'Iowa State', homeId: 'ksu' },
+      { id: 'w10-psu', week: 10, date: '2026-11-07', kickoffHour: 15, kickoffDisplay: '3:30 PM ET', tv: 'CBS', away: 'Indiana', homeId: 'psu' },
+      { id: 'w10-fsu', week: 10, date: '2026-11-07', kickoffHour: 19, kickoffDisplay: '7:30 PM ET', tv: 'NBC', away: 'Notre Dame', homeId: 'fsu' },
+
+      // WEEK 11 (Nov 14, 2026)
+      { id: 'w11-byu', week: 11, date: '2026-11-14', kickoffHour: 19, kickoffDisplay: '7:15 PM MT', tv: 'ESPN', away: 'Kansas', homeId: 'byu' },
+      { id: 'w11-uga', week: 11, date: '2026-11-14', kickoffHour: 19, kickoffDisplay: '7:30 PM ET', tv: 'ABC', away: 'Tennessee', homeId: 'uga' },
+      { id: 'w11-isu', week: 11, date: '2026-11-14', kickoffHour: 14, kickoffDisplay: '2:30 PM CT', tv: 'FOX', away: 'Cincinnati', homeId: 'isu' },
+      { id: 'w11-colorado', week: 11, date: '2026-11-14', kickoffHour: 13, kickoffDisplay: '1:30 PM MT', tv: 'TNT', away: 'Utah', homeId: 'colorado' },
+      { id: 'w11-mich', week: 11, date: '2026-11-14', kickoffHour: 12, kickoffDisplay: '12:00 PM ET', tv: 'CBS', away: 'Northwestern', homeId: 'mich' },
+
+      // WEEK 12 (Nov 21, 2026)
+      { id: 'w12-ttu', week: 12, date: '2026-11-21', kickoffHour: 14, kickoffDisplay: '2:30 PM CT', tv: 'FOX', away: 'BYU', homeId: 'ttu' },
+      { id: 'w12-osu', week: 12, date: '2026-11-21', kickoffHour: 12, kickoffDisplay: '12:00 PM ET', tv: 'FOX', away: 'Indiana', homeId: 'osu' },
+      { id: 'w12-bama', week: 12, date: '2026-11-21', kickoffHour: 18, kickoffDisplay: '6:30 PM CT', tv: 'ABC', away: 'Oklahoma', homeId: 'bama' },
+      { id: 'w12-nd', week: 12, date: '2026-11-21', kickoffHour: 15, kickoffDisplay: '3:30 PM ET', tv: 'NBC', away: 'Army', homeId: 'nd' },
+      { id: 'w12-baylor', week: 12, date: '2026-11-21', kickoffHour: 18, kickoffDisplay: '6:00 PM CT', tv: 'ESPN2', away: 'Houston', homeId: 'baylor' },
+
+      // WEEK 13 — RIVALRY WEEK (Nov 26–28, 2026)
+      { id: 'w13-byu', week: 13, date: '2026-11-28', kickoffHour: 19, kickoffDisplay: '7:30 PM MT', tv: 'ESPN', away: 'Houston', homeId: 'byu' },
+      { id: 'w13-osu', week: 13, date: '2026-11-28', kickoffHour: 12, kickoffDisplay: '12:00 PM ET', tv: 'FOX', away: 'Michigan (The Game)', homeId: 'osu' },
+      { id: 'w13-bama', week: 13, date: '2026-11-28', kickoffHour: 14, kickoffDisplay: '2:30 PM CT', tv: 'ABC', away: 'Auburn (Iron Bowl)', homeId: 'bama' },
+      { id: 'w13-texas', week: 13, date: '2026-11-27', kickoffHour: 18, kickoffDisplay: '6:30 PM CT', tv: 'ABC', away: 'Texas A&M (Lone Star)', homeId: 'texas' },
+      { id: 'w13-kansas', week: 13, date: '2026-11-28', kickoffHour: 14, kickoffDisplay: '2:30 PM CT', tv: 'FS1', away: 'Kansas State (Sunflower)', homeId: 'kansas' },
+      { id: 'w13-clemson', week: 13, date: '2026-11-28', kickoffHour: 12, kickoffDisplay: '12:00 PM ET', tv: 'ESPN', away: 'South Carolina', homeId: 'clemson' },
+      { id: 'w13-oregon', week: 13, date: '2026-11-28', kickoffHour: 16, kickoffDisplay: '4:30 PM PT', tv: 'NBC', away: 'Oregon State', homeId: 'oregon' },
+      { id: 'w13-psu', week: 13, date: '2026-11-28', kickoffHour: 15, kickoffDisplay: '3:30 PM ET', tv: 'CBS', away: 'Maryland', homeId: 'psu' }
+    ];
+
+    // =========================================================================
+    // 3. APP STATE & PERSISTENCE
+    // =========================================================================
+    const state = {
+      selectedWeek: 13,
+      selectedConf: 'All',
+      searchQuery: '',
+      viewMode: 'cards', // 'cards' | 'compare'
+      favorites: new Set(JSON.parse(localStorage.getItem('gdwx_favorites') || '["w13-byu","w13-osu","w13-kansas"]')),
+      compareIds: new Set(JSON.parse(localStorage.getItem('gdwx_compare') || '["w13-byu","w13-osu"]')),
+      weatherCache: new Map(), // gameId -> parsed telemetry object
+      lastSyncStatus: 'syncing'
+    };
+
+    function persistSelections() {
+      localStorage.setItem('gdwx_favorites', JSON.stringify([...state.favorites]));
+      localStorage.setItem('gdwx_compare', JSON.stringify([...state.compareIds]));
+    }
+
+    // =========================================================================
+    // 4. WEATHER INTERPRETATION & QUARTER-BY-QUARTER TIMING ENGINE
+    // =========================================================================
+    function decodeWeatherCode(code) {
+      if (code === 0) return { label: 'Clear Sky', icon: '☀️', severity: 0 };
+      if (code === 1) return { label: 'Mainly Clear', icon: '🌤️', severity: 0 };
+      if (code === 2) return { label: 'Partly Cloudy', icon: '⛅', severity: 0 };
+      if (code === 3) return { label: 'Overcast', icon: '☁️', severity: 1 };
+      if (code === 45 || code === 48) return { label: 'Stadium Fog', icon: '🌫️', severity: 2 };
+      if ([51, 53, 55, 56, 57].includes(code)) return { label: 'Light Drizzle', icon: '🌦️', severity: 2 };
+      if ([61, 63, 80, 81].includes(code)) return { label: 'Rain Showers', icon: '🌧️', severity: 3 };
+      if ([65, 66, 67, 82].includes(code)) return { label: 'Heavy Rain', icon: '⛈️', severity: 4 };
+      if ([71, 73, 75, 77, 85, 86].includes(code)) return { label: 'Snow / Flurries', icon: '❄️', severity: 4 };
+      if ([95, 96, 99].includes(code)) return { label: 'Thunderstorms', icon: '⚡', severity: 5 };
+      return { label: 'Partly Cloudy', icon: '⛅', severity: 0 };
+    }
+
+    function degreesToCardinal(deg) {
+      const dirs = ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE', 'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW'];
+      return dirs[Math.round(((deg % 360) / 22.5)) % 16];
+    }
+
+    function formatClockMinutes(baseHour, offsetMinutes) {
+      const totalMins = baseHour * 60 + offsetMinutes;
+      const hr24 = Math.floor(totalMins / 60) % 24;
+      const mins = totalMins % 60;
+      const ampm = hr24 >= 12 ? 'PM' : 'AM';
+      const hr12 = hr24 % 12 === 0 ? 12 : hr24 % 12;
+      return `${hr12}:${String(mins).padStart(2, '0')} ${ampm}`;
+    }
+
+    /**
+     * Interpolate hourly Open-Meteo arrays into realistic NCAA game segments:
+     * Q1 (+0m), Q2 (+50m), Halftime (+100m), Q3 (+120m), Q4 (+170m)
+     */
+    function buildQuarterBreakdown(hourly, kickoffHour) {
+      const segments = [
+        { key: 'Q1', label: '1st Qtr', offsetMin: 0 },
+        { key: 'Q2', label: '2nd Qtr', offsetMin: 50 },
+        { key: 'HT', label: 'Halftime', offsetMin: 100 },
+        { key: 'Q3', label: '3rd Qtr', offsetMin: 120 },
+        { key: 'Q4', label: '4th Qtr', offsetMin: 170 }
+      ];
+
+      return segments.map((seg) => {
+        const exactHour = kickoffHour + seg.offsetMin / 60;
+        const h0 = Math.min(23, Math.max(0, Math.floor(exactHour)));
+        const h1 = Math.min(23, h0 + 1);
+        const frac = exactHour - Math.floor(exactHour);
+
+        const lerp = (arr, fallback = 0) => {
+          if (!arr || arr.length === 0) return fallback;
+          const v0 = arr[h0] ?? fallback;
+          const v1 = arr[h1] ?? v0;
+          return v0 + (v1 - v0) * frac;
+        };
+
+        const temp = Math.round(lerp(hourly.temperature_2m, 55));
+        const feelsLike = Math.round(lerp(hourly.apparent_temperature, temp));
+        const wind = Math.round(lerp(hourly.wind_speed_10m, 8));
+        const gust = Math.round(lerp(hourly.wind_gusts_10m, wind + 5));
+        const windDirDeg = Math.round(lerp(hourly.wind_direction_10m, 180));
+        const precipProb = Math.round(lerp(hourly.precipitation_probability, 10));
+        const precipMm = +(lerp(hourly.precipitation, 0)).toFixed(2);
+        const humidity = Math.round(lerp(hourly.relative_humidity_2m, 50));
+        const code = hourly.weather_code?.[h0] ?? 1;
+        const cond = decodeWeatherCode(code);
+
+        return {
+          ...seg,
+          clock: formatClockMinutes(kickoffHour, seg.offsetMin),
+          temp,
+          feelsLike,
+          wind,
+          gust,
+          windDirDeg,
+          windCard: degreesToCardinal(windDirDeg),
+          precipProb,
+          precipMm,
+          humidity,
+          code,
+          cond
+        };
+      });
+    }
+
+    /**
+     * Evaluate Worst In-Game Weather across Q1–Q4
+     */
+    function analyzeGameHazards(quarters, stadium) {
+      let worst = quarters[0];
+      let highestRiskScore = -1;
+
+      quarters.forEach((q) => {
+        let score = q.cond.severity * 25 + q.gust * 1.1 + q.precipProb * 0.4;
+        if (q.temp <= 32) score += (35 - q.temp) * 1.8;
+        if (q.temp >= 90) score += (q.temp - 85) * 2.0;
+        if (score > highestRiskScore) {
+          highestRiskScore = score;
+          worst = q;
+        }
+      });
+
+      const maxGust = Math.max(...quarters.map((q) => q.gust));
+      const minTemp = Math.min(...quarters.map((q) => q.temp));
+      const maxTemp = Math.max(...quarters.map((q) => q.temp));
+      const maxPrecip = Math.max(...quarters.map((q) => q.precipProb));
+
+      let badgeType = 'ideal';
+      let headline = 'Ideal Gridiron Conditions';
+      let detail = `Steady ${quarters[0].temp}°F at kickoff with manageable ${quarters[0].wind} mph breeze.`;
+      const tips = [];
+
+      if (worst.cond.severity >= 4 || maxPrecip >= 65) {
+        badgeType = 'severe';
+        headline = `${worst.cond.label} (${worst.label})`;
+        detail = `${maxPrecip}% precip risk peaking in ${worst.label} (${worst.clock}) · ${worst.temp}°F.`;
+        tips.push(`Wet ${stadium.surface} surface increases ball-security & footing risk.`);
+      } else if (maxGust >= 24) {
+        badgeType = 'wind';
+        headline = `High Wind Gusts ${maxGust} mph (${worst.label})`;
+        detail = `Sustained ${worst.wind} mph ${worst.windCard} winds gusting to ${maxGust} mph in ${worst.label}.`;
+        tips.push('Deep passing trajectories and 40+ yd field goals heavily impacted.');
+      } else if (minTemp <= 34) {
+        badgeType = 'cold';
+        headline = `Freezing Chill · Low ${minTemp}°F (${worst.label})`;
+        detail = `Feels like ${worst.feelsLike}°F by ${worst.label} (${worst.clock}).`;
+        tips.push('Hardened football impacts kicking distance and receiver hand grip.');
+      } else if (maxTemp >= 88) {
+        badgeType = 'heat';
+        headline = `Heat Stress · High ${maxTemp}°F`;
+        detail = `Heat index reaches ${worst.feelsLike}°F during ${worst.label}.`;
+        tips.push('Elevated hydration & cramping management required on sidelines.');
+      } else if (maxGust >= 16 || maxPrecip >= 35) {
+        badgeType = 'moderate';
+        headline = `Breezy / Damp (${worst.label})`;
+        detail = `Gusts up to ${maxGust} mph · ${maxPrecip}% precip chance in ${worst.label}.`;
+        tips.push('Crosswinds may affect long directional punts.');
+      } else {
+        tips.push('Clean footing and neutral wind profile favor vertical passing & kicking.');
+      }
+
+      if (stadium.elev >= 4000) {
+        tips.push(`High altitude (${stadium.elev.toLocaleString()} ft): thinner air adds ~5–7 yds on kickoffs/punts.`);
+      }
+
+      return {
+        worst,
+        badgeType,
+        headline,
+        detail,
+        maxGust,
+        minTemp,
+        maxTemp,
+        maxPrecip,
+        tips
+      };
+    }
+
+    /**
+     * Deterministic realistic climatology fallback if offline and uncached
+     */
+    function generateClimatologyFallback(game, stadium) {
+      const month = Number(game.date.split('-')[1]);
+      const latFactor = Math.max(0, stadium.lat - 30);
+      const elevFactor = stadium.elev / 320;
+      const seasonDrop = month === 9 ? 0 : month === 10 ? 14 : 28;
+      const eveningDrop = game.kickoffHour >= 18 ? 9 : 0;
+
+      const baseTemp = Math.round(86 - latFactor * 1.15 - elevFactor - seasonDrop - eveningDrop);
+      const hourly = {
+        temperature_2m: [],
+        apparent_temperature: [],
+        wind_speed_10m: [],
+        wind_gusts_10m: [],
+        wind_direction_10m: [],
+        precipitation_probability: [],
+        precipitation: [],
+        relative_humidity_2m: [],
+        weather_code: []
+      };
+
+      for (let h = 0; h < 24; h++) {
+        const diurnal = Math.sin(((h - 6) / 24) * Math.PI * 2) * 6;
+        const t = Math.round(baseTemp + diurnal);
+        const w = 7 + ((stadium.elev + h * 3) % 11);
+        hourly.temperature_2m.push(t);
+        hourly.apparent_temperature.push(t - (w > 12 ? 4 : 1));
+        hourly.wind_speed_10m.push(w);
+        hourly.wind_gusts_10m.push(w + 7);
+        hourly.wind_direction_10m.push((h * 15 + 210) % 360);
+        hourly.precipitation_probability.push(month === 11 && stadium.lat > 40 ? 25 : 10);
+        hourly.precipitation.push(0);
+        hourly.relative_humidity_2m.push(48);
+        hourly.weather_code.push(month === 11 && t <= 33 ? 71 : 1);
+      }
+
+      const quarters = buildQuarterBreakdown(hourly, game.kickoffHour);
+      const hazards = analyzeGameHazards(quarters, stadium);
+      return { source: 'Climatology Cache', quarters, hazards };
+    }
+
+    /**
+     * Fetch live forecast or historical archive telemetry from Open-Meteo
+     */
+    async function fetchGameTelemetry(game, forceRefresh = false) {
+      if (!forceRefresh && state.weatherCache.has(game.id)) {
+        return state.weatherCache.get(game.id);
+      }
+
+      const stadium = STADIUMS[game.homeId];
+      const todayStr = new Date().toISOString().split('T')[0];
+      // Archive endpoint for dates more than 2 days in the past; Forecast endpoint for current/upcoming
+      const gameDateObj = new Date(game.date + 'T12:00:00Z');
+      const nowObj = new Date(todayStr + 'T12:00:00Z');
+      const diffDays = Math.round((gameDateObj - nowObj) / (1000 * 60 * 60 * 24));
+
+      const isHistorical = diffDays < -2;
+      const isFarFuture = diffDays > 14;
+
+      if (isFarFuture) {
+        const fallback = generateClimatologyFallback(game, stadium);
+        fallback.source = 'Seasonal Model';
+        state.weatherCache.set(game.id, fallback);
+        return fallback;
+      }
+
+      const baseUrl = isHistorical
+        ? 'https://archive-api.open-meteo.com/v1/archive'
+        : 'https://api.open-meteo.com/v1/forecast';
+
+      const params = new URLSearchParams({
+        latitude: stadium.lat,
+        longitude: stadium.lon,
+        start_date: game.date,
+        end_date: game.date,
+        hourly: [
+          'temperature_2m',
+          'apparent_temperature',
+          'relative_humidity_2m',
+          'precipitation_probability',
+          'precipitation',
+          'weather_code',
+          'wind_speed_10m',
+          'wind_gusts_10m',
+          'wind_direction_10m'
+        ].join(','),
+        temperature_unit: 'fahrenheit',
+        wind_speed_unit: 'mph',
+        precipitation_unit: 'inch',
+        timezone: 'auto'
+      });
+
+      try {
+        const res = await fetch(`${baseUrl}?${params.toString()}`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        if (!data.hourly || !data.hourly.temperature_2m) throw new Error('Incomplete hourly payload');
+
+        const quarters = buildQuarterBreakdown(data.hourly, game.kickoffHour);
+        const hazards = analyzeGameHazards(quarters, stadium);
+        const result = {
+          source: isHistorical ? 'Open-Meteo Archive' : 'Open-Meteo Live',
+          quarters,
+          hazards
+        };
+        state.weatherCache.set(game.id, result);
+        return result;
+      } catch (err) {
+        const fallback = generateClimatologyFallback(game, stadium);
+        state.weatherCache.set(game.id, fallback);
+        return fallback;
+      }
+    }
+
+    // =========================================================================
+    // 5. UI RENDERING: CONTROLS, CARDS, COMPARISON & MODAL
+    // =========================================================================
+    const CONFERENCES = ['All', 'Big 12', 'SEC', 'Big Ten', 'ACC', 'Independent', 'Favorites ★'];
+
+    function formatDisplayDate(isoDate) {
+      const [y, m, d] = isoDate.split('-').map(Number);
+      const dt = new Date(y, m - 1, d);
+      return dt.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+    }
+
+    function getFilteredGames() {
+      const q = state.searchQuery.trim().toLowerCase();
+      return GAMES.filter((g) => {
+        if (g.week !== state.selectedWeek) return false;
+        const st = STADIUMS[g.homeId];
+
+        if (state.selectedConf === 'Favorites ★') {
+          if (!state.favorites.has(g.id)) return false;
+        } else if (state.selectedConf !== 'All') {
+          if (st.conf !== state.selectedConf) return false;
+        }
+
+        if (q) {
+          const haystack = `${g.away} ${st.team} ${st.short} ${st.stadium} ${st.city} ${st.conf} ${g.tv}`.toLowerCase();
+          if (!haystack.includes(q)) return false;
+        }
+        return true;
+      });
+    }
+
+    function renderWeekSelector() {
+      const container = document.getElementById('weekSelector');
+      const weekMeta = WEEKS_META.find((w) => w.week === state.selectedWeek);
+      document.getElementById('weekDateRangeLabel').textContent = `${weekMeta.label} · ${weekMeta.range}`;
+
+      container.innerHTML = WEEKS_META.map((w) => {
+        const active = w.week === state.selectedWeek;
+        return `
+          <button
+            type="button"
+            data-week="${w.week}"
+            class="px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition shrink-0 ${
+              active
+                ? 'bg-royal text-white shadow-md shadow-blue-900/50 ring-1 ring-blue-300/40'
+                : 'bg-[#040914] text-slate-400 hover:text-white border border-slate-800'
+            }"
+          >
+            ${w.label}
+          </button>
+        `;
+      }).join('');
+
+      container.querySelectorAll('button[data-week]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          state.selectedWeek = Number(btn.dataset.week);
+          renderAll();
+        });
+      });
+    }
+
+    function renderConferencePills() {
+      const container = document.getElementById('conferencePills');
+      container.innerHTML = CONFERENCES.map((conf) => {
+        const active = state.selectedConf === conf;
+        return `
+          <button
+            type="button"
+            data-conf="${conf}"
+            class="px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition shrink-0 ${
+              active
+                ? 'bg-blue-600/25 text-blue-300 border border-blue-400/50'
+                : 'bg-[#040914] text-slate-400 hover:text-slate-200 border border-slate-800'
+            }"
+          >
+            ${conf}
+          </button>
+        `;
+      }).join('');
+
+      container.querySelectorAll('button[data-conf]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          state.selectedConf = btn.dataset.conf;
+          renderAll();
+        });
+      });
+    }
+
+    function getHazardStyles(badgeType) {
+      switch (badgeType) {
+        case 'severe':
+          return {
+            wrap: 'bg-rose-950/70 border-rose-500/40 text-rose-200',
+            dot: 'bg-rose-400'
+          };
+        case 'wind':
+        case 'heat':
+        case 'moderate':
+          return {
+            wrap: 'bg-amber-950/65 border-amber-500/40 text-amber-200',
+            dot: 'bg-amber-400'
+          };
+        case 'cold':
+          return {
+            wrap: 'bg-sky-950/75 border-sky-400/40 text-sky-200',
+            dot: 'bg-sky-400'
+          };
+        default:
+          return {
+            wrap: 'bg-emerald-950/55 border-emerald-500/30 text-emerald-200',
+            dot: 'bg-emerald-400'
+          };
+      }
+    }
+
+    function updateSummaryStats(gamesWithWeather) {
+      document.getElementById('statTotalGames').textContent = gamesWithWeather.length;
+      document.getElementById('resultsSummary').textContent = `Showing ${gamesWithWeather.length} matchup${gamesWithWeather.length === 1 ? '' : 's'}`;
+
+      if (gamesWithWeather.length === 0) {
+        document.getElementById('statAlertsCount').textContent = '0';
+        document.getElementById('statColdest').textContent = '--';
+        document.getElementById('statWindiest').textContent = '--';
+        return;
+      }
+
+      const alerts = gamesWithWeather.filter((x) => x.wx.hazards.badgeType !== 'ideal').length;
+      document.getElementById('statAlertsCount').textContent = `${alerts} Active`;
+
+      const coldest = [...gamesWithWeather].sort((a, b) => a.wx.quarters[0].temp - b.wx.quarters[0].temp)[0];
+      const windiest = [...gamesWithWeather].sort((a, b) => b.wx.hazards.maxGust - a.wx.hazards.maxGust)[0];
+
+      document.getElementById('statColdest').textContent = `${coldest.wx.quarters[0].temp}°F · ${STADIUMS[coldest.game.homeId].short}`;
+      document.getElementById('statWindiest').textContent = `${windiest.wx.hazards.maxGust} mph · ${STADIUMS[windiest.game.homeId].short}`;
+    }
+
+    function updateCompareCounters() {
+      const count = state.compareIds.size;
+      document.getElementById('compareCountPill').textContent = count;
+
+      const floatingBar = document.getElementById('floatingCompareBar');
+      if (count > 0 && state.viewMode === 'cards') {
+        floatingBar.classList.remove('hidden');
+        document.getElementById('floatingCompareText').textContent = `${count} stadium${count === 1 ? '' : 's'} selected`;
+      } else {
+        floatingBar.classList.add('hidden');
+      }
+    }
+
+    async function renderAll(forceRefresh = false) {
+      renderWeekSelector();
+      renderConferencePills();
+
+      const filteredGames = getFilteredGames();
+      const gridEl = document.getElementById('cardsGridView');
+      const emptyEl = document.getElementById('emptyState');
+      const compareEl = document.getElementById('compareView');
+
+      // Update sync indicator while fetching
+      const syncDot = document.getElementById('syncDot');
+      const syncText = document.getElementById('syncText');
+      if (navigator.onLine) {
+        syncDot.style.background = '#10B981';
+        syncText.textContent = 'Syncing Open-Meteo...';
+      }
+
+      // Fetch weather for filtered games in parallel
+      const gamesWithWeather = await Promise.all(
+        filteredGames.map(async (game) => ({
+          game,
+          wx: await fetchGameTelemetry(game, forceRefresh)
+        }))
+      );
+
+      if (navigator.onLine) {
+        syncDot.style.background = '#10B981';
+        syncText.textContent = 'Live Telemetry Synced';
+      } else {
+        syncDot.style.background = '#F59E0B';
+        syncText.textContent = 'Cached Offline';
+      }
+
+      updateSummaryStats(gamesWithWeather);
+      updateCompareCounters();
+
+      if (state.viewMode === 'compare') {
+        gridEl.classList.add('hidden');
+        emptyEl.classList.add('hidden');
+        compareEl.classList.remove('hidden');
+        await renderComparisonView();
+        return;
+      }
+
+      compareEl.classList.add('hidden');
+
+      if (gamesWithWeather.length === 0) {
+        gridEl.classList.add('hidden');
+        emptyEl.classList.remove('hidden');
+        return;
+      }
+
+      emptyEl.classList.add('hidden');
+      gridEl.classList.remove('hidden');
+
+      gridEl.innerHTML = gamesWithWeather.map(({ game, wx }) => {
+        const st = STADIUMS[game.homeId];
+        const q1 = wx.quarters[0];
+        const hazardStyle = getHazardStyles(wx.hazards.badgeType);
+        const isFav = state.favorites.has(game.id);
+        const isCmp = state.compareIds.has(game.id);
+
+        return `
+          <article class="telemetry-card rounded-2xl p-4 flex flex-col justify-between gap-3.5 cursor-pointer" data-open-game="${game.id}">
+            <!-- Top Row: Week/Date/TV + Favorite & Compare Actions -->
+            <div class="flex items-center justify-between gap-2">
+              <div class="flex items-center gap-1.5 flex-wrap">
+                <span class="px-2 py-0.5 rounded-md bg-royal/25 border border-blue-400/35 text-[11px] font-bold text-blue-300">
+                  Wk ${game.week}
+                </span>
+                <span class="text-xs font-semibold text-slate-300">${formatDisplayDate(game.date)} · ${game.kickoffDisplay}</span>
+                <span class="px-2 py-0.5 rounded-md bg-slate-800 text-[11px] font-extrabold text-white tracking-wide">
+                  ${game.tv}
+                </span>
+              </div>
+
+              <div class="flex items-center gap-1.5 shrink-0" onclick="event.stopPropagation()">
+                <button
+                  type="button"
+                  data-toggle-compare="${game.id}"
+                  title="Select for side-by-side comparison"
+                  class="px-2 py-1 rounded-lg text-[11px] font-bold border transition ${
+                    isCmp
+                      ? 'bg-royal border-blue-400 text-white'
+                      : 'bg-[#040914] border-slate-700 text-slate-400 hover:text-white'
+                  }"
+                >
+                  ${isCmp ? '✓ Cmp' : '+ Cmp'}
+                </button>
+                <button
+                  type="button"
+                  data-toggle-fav="${game.id}"
+                  title="Favorite matchup"
+                  aria-label="Toggle favorite"
+                  class="p-1.5 rounded-lg border transition ${
+                    isFav
+                      ? 'bg-amber-500/20 border-amber-400/50 text-amber-300'
+                      : 'bg-[#040914] border-slate-800 text-slate-500 hover:text-amber-300'
+                  }"
+                >
+                  ${isFav ? '★' : '☆'}
+                </button>
+              </div>
+            </div>
+
+            <!-- Matchup & Stadium Metadata -->
+            <div>
+              <div class="flex items-baseline justify-between gap-2">
+                <h3 class="text-base sm:text-lg font-extrabold text-white leading-snug">
+                  ${game.away} <span class="text-slate-400 font-semibold">@</span> ${st.team}
+                </h3>
+                <span class="text-[11px] font-bold text-slate-400 shrink-0">${st.conf}</span>
+              </div>
+              <p class="text-xs text-slate-400 mt-0.5 truncate">
+                🏟️ ${st.stadium} · ${st.city} (${st.elev.toLocaleString()} ft · ${st.surface})
+              </p>
+            </div>
+
+            <!-- Kickoff Weather Box -->
+            <div class="rounded-xl bg-[#040914]/90 border border-slate-800/90 p-3 flex items-center justify-between gap-3">
+              <div class="flex items-center gap-3">
+                <span class="text-3xl leading-none" aria-hidden="true">${q1.cond.icon}</span>
+                <div>
+                  <div class="flex items-baseline gap-1.5">
+                    <span class="text-2xl font-black text-white">${q1.temp}°F</span>
+                    <span class="text-xs text-slate-400">Feels ${q1.feelsLike}°</span>
+                  </div>
+                  <div class="text-xs font-semibold text-slate-300">${q1.cond.label} at Kickoff</div>
+                </div>
+              </div>
+
+              <div class="text-right text-xs space-y-0.5">
+                <div class="font-bold text-slate-200">💨 ${q1.wind} mph ${q1.windCard}</div>
+                <div class="text-slate-400">Gusts ${q1.gust} mph</div>
+                <div class="text-sky-300 font-semibold">💧 ${q1.precipProb}% precip</div>
+              </div>
+            </div>
+
+            <!-- Worst In-Game Weather Alert Callout -->
+            <div class="rounded-xl border px-3 py-2 flex items-center gap-2 text-xs ${hazardStyle.wrap}">
+              <span class="w-2 h-2 rounded-full shrink-0 ${hazardStyle.dot}"></span>
+              <div class="truncate">
+                <span class="font-bold">${wx.hazards.headline}:</span>
+                <span class="opacity-90">${wx.hazards.detail}</span>
+              </div>
+            </div>
+
+            <!-- Inline Q1–Q4 Mini Timeline -->
+            <div class="grid grid-cols-4 gap-1.5 pt-0.5">
+              ${wx.quarters.filter((q) => q.key !== 'HT').map((q) => `
+                <div class="rounded-lg bg-[#040914]/80 border border-slate-800/80 px-2 py-1.5 text-center">
+                  <div class="text-[10px] font-bold text-slate-400">${q.key} · ${q.clock.replace(' PM', 'p').replace(' AM', 'a')}</div>
+                  <div class="text-xs font-extrabold text-white mt-0.5">${q.cond.icon} ${q.temp}°</div>
+                  <div class="text-[10px] text-slate-400">${q.wind}mph · ${q.precipProb}%</div>
+                </div>
+              `).join('')}
+            </div>
+          </article>
+        `;
+      }).join('');
+
+      // Attach listeners
+      gridEl.querySelectorAll('[data-open-game]').forEach((card) => {
+        card.addEventListener('click', () => openGameModal(card.dataset.openGame));
+      });
+
+      gridEl.querySelectorAll('[data-toggle-fav]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const id = btn.dataset.toggleFav;
+          if (state.favorites.has(id)) state.favorites.delete(id);
+          else state.favorites.add(id);
+          persistSelections();
+          renderAll();
+        });
+      });
+
+      gridEl.querySelectorAll('[data-toggle-compare]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const id = btn.dataset.toggleCompare;
+          if (state.compareIds.has(id)) {
+            state.compareIds.delete(id);
+          } else {
+            if (state.compareIds.size >= 4) {
+              // Remove oldest selected to cap at 4
+              const first = state.compareIds.values().next().value;
+              state.compareIds.delete(first);
+            }
+            state.compareIds.add(id);
+          }
+          persistSelections();
+          renderAll();
+        });
+      });
+    }
+
+    // =========================================================================
+    // 6. SIDE-BY-SIDE COMPARISON RENDERER
+    // =========================================================================
+    async function renderComparisonView() {
+      const container = document.getElementById('compareContainer');
+      const selectedGames = GAMES.filter((g) => state.compareIds.has(g.id));
+
+      if (selectedGames.length === 0) {
+        container.innerHTML = `
+          <div class="rounded-2xl bg-card border border-slate-800 p-8 text-center space-y-3">
+            <p class="text-sm font-bold text-white">No games currently selected for comparison</p>
+            <p class="text-xs text-slate-400">Switch back to Stadium Cards and tap "+ Cmp" on 2 to 4 games, or click Auto-Pick Top 3 above.</p>
+          </div>
+        `;
+        return;
+      }
+
+      const items = await Promise.all(
+        selectedGames.map(async (g) => ({
+          game: g,
+          st: STADIUMS[g.homeId],
+          wx: await fetchGameTelemetry(g)
+        }))
+      );
+
+      container.innerHTML = `
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-${Math.min(4, items.length)} gap-4 min-w-[300px]">
+          ${items.map(({ game, st, wx }) => {
+            const q1 = wx.quarters[0];
+            const hazardStyle = getHazardStyles(wx.hazards.badgeType);
+            return `
+              <div class="rounded-2xl bg-card border border-slate-700/80 p-4 space-y-3.5 flex flex-col justify-between">
+                <div>
+                  <div class="flex items-center justify-between gap-2">
+                    <span class="px-2 py-0.5 rounded bg-royal/25 text-[11px] font-bold text-blue-300">Wk ${game.week} · ${game.tv}</span>
+                    <button type="button" data-remove-cmp="${game.id}" class="text-xs text-slate-400 hover:text-rose-300 font-bold">Remove ✕</button>
+                  </div>
+                  <h3 class="text-base font-extrabold text-white mt-2">${game.away} @ ${st.short}</h3>
+                  <p class="text-xs text-slate-400">${st.stadium} · ${st.elev.toLocaleString()} ft</p>
+                </div>
+
+                <div class="space-y-2 text-xs">
+                  <div class="flex justify-between py-1.5 border-b border-slate-800">
+                    <span class="text-slate-400">Kickoff Temp</span>
+                    <span class="font-extrabold text-white">${q1.cond.icon} ${q1.temp}°F (Feels ${q1.feelsLike}°)</span>
+                  </div>
+                  <div class="flex justify-between py-1.5 border-b border-slate-800">
+                    <span class="text-slate-400">Temp Range (Q1–Q4)</span>
+                    <span class="font-bold text-sky-300">${wx.hazards.minTemp}°F – ${wx.hazards.maxTemp}°F</span>
+                  </div>
+                  <div class="flex justify-between py-1.5 border-b border-slate-800">
+                    <span class="text-slate-400">Peak Wind Gust</span>
+                    <span class="font-extrabold text-amber-300">${wx.hazards.maxGust} mph (${q1.windCard})</span>
+                  </div>
+                  <div class="flex justify-between py-1.5 border-b border-slate-800">
+                    <span class="text-slate-400">Max Precip Prob</span>
+                    <span class="font-bold text-blue-300">${wx.hazards.maxPrecip}%</span>
+                  </div>
+                </div>
+
+                <div class="rounded-xl border px-3 py-2 text-xs ${hazardStyle.wrap}">
+                  <div class="font-bold">${wx.hazards.headline}</div>
+                  <div class="opacity-90 mt-0.5">${wx.hazards.detail}</div>
+                </div>
+
+                <div class="space-y-1">
+                  <div class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Quarter Progression</div>
+                  ${wx.quarters.map((q) => `
+                    <div class="flex items-center justify-between text-xs bg-[#040914] px-2.5 py-1.5 rounded-lg">
+                      <span class="font-bold text-slate-300 w-14">${q.key}</span>
+                      <span>${q.cond.icon} <strong>${q.temp}°F</strong></span>
+                      <span class="text-slate-400">${q.wind}m (${q.gust}g)</span>
+                      <span class="text-sky-300">${q.precipProb}%</span>
+                    </div>
+                  `).join('')}
+                </div>
+              </div>
+            `;
+          }).join('')}
+        </div>
+      `;
+
+      container.querySelectorAll('[data-remove-cmp]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          state.compareIds.delete(btn.dataset.removeCmp);
+          persistSelections();
+          renderAll();
+        });
+      });
+    }
+
+    // =========================================================================
+    // 7. QUARTER-BY-QUARTER DETAIL MODAL
+    // =========================================================================
+    async function openGameModal(gameId) {
+      const game = GAMES.find((g) => g.id === gameId);
+      if (!game) return;
+      const st = STADIUMS[game.homeId];
+      const wx = await fetchGameTelemetry(game);
+      const hazardStyle = getHazardStyles(wx.hazards.badgeType);
+
+      document.getElementById('modalMetaBadge').textContent =
+        `Week ${game.week} · ${formatDisplayDate(game.date)} · ${game.kickoffDisplay} · ${game.tv} (${wx.source})`;
+      document.getElementById('modalTitle').textContent = `${game.away} @ ${st.team}`;
+      document.getElementById('modalStadiumLine').textContent =
+        `${st.stadium} · ${st.city} · Elev ${st.elev.toLocaleString()} ft · ${st.surface} (${st.roof})`;
+
+      document.getElementById('modalBody').innerHTML = `
+        <!-- Worst In-Game Weather Banner -->
+        <div class="rounded-2xl border p-4 ${hazardStyle.wrap}">
+          <div class="flex items-center gap-2 text-sm font-extrabold">
+            <span class="w-2.5 h-2.5 rounded-full ${hazardStyle.dot}"></span>
+            <span>Worst In-Game Window: ${wx.hazards.headline}</span>
+          </div>
+          <p class="text-xs mt-1 opacity-95">${wx.hazards.detail}</p>
+        </div>
+
+        <!-- Quarter-by-Quarter Breakdown Table (Q1, Q2, Halftime, Q3, Q4) -->
+        <div>
+          <div class="flex items-center justify-between mb-2.5">
+            <h3 class="text-xs font-extrabold uppercase tracking-wider text-slate-300">Quarter-by-Quarter Telemetry (~50 Min / Qtr)</h3>
+            <span class="text-[11px] text-slate-400">Local Stadium Time</span>
+          </div>
+
+          <div class="space-y-2">
+            ${wx.quarters.map((q) => {
+              const isWorst = q.key === wx.hazards.worst.key;
+              return `
+                <div class="rounded-xl p-3 border flex flex-col sm:flex-row sm:items-center justify-between gap-2 ${
+                  isWorst
+                    ? 'bg-blue-950/35 border-blue-400/50'
+                    : 'bg-[#040914] border-slate-800'
+                }">
+                  <div class="flex items-center gap-3">
+                    <div class="w-16 shrink-0">
+                      <div class="text-xs font-black text-white">${q.label}</div>
+                      <div class="text-[11px] text-slate-400">${q.clock}</div>
+                    </div>
+                    <span class="text-2xl">${q.cond.icon}</span>
+                    <div>
+                      <div class="text-sm font-extrabold text-white">
+                        ${q.temp}°F <span class="text-xs font-normal text-slate-400">(Feels ${q.feelsLike}°F)</span>
+                      </div>
+                      <div class="text-xs text-slate-300">${q.cond.label}</div>
+                    </div>
+                  </div>
+
+                  <div class="flex sm:flex-col items-center sm:items-end justify-between text-xs gap-2 pt-1 sm:pt-0 border-t sm:border-t-0 border-slate-800/80">
+                    <div class="font-bold text-slate-200">
+                      💨 ${q.wind} mph ${q.windCard} <span class="text-amber-300">(Gust ${q.gust})</span>
+                    </div>
+                    <div class="text-sky-300 font-semibold">
+                      💧 ${q.precipProb}% precip · ${q.humidity}% RH
+                    </div>
+                  </div>
+                </div>
+              `;
+            }).join('')}
+          </div>
+        </div>
+
+        <!-- Gridiron Tactical & Kicking Notes -->
+        <div class="rounded-2xl bg-[#040914] border border-slate-800 p-4 space-y-2">
+          <h4 class="text-xs font-extrabold uppercase tracking-wider text-blue-400">Gridiron &amp; Special Teams Impact</h4>
+          <ul class="space-y-1.5 text-xs text-slate-300 list-disc pl-4">
+            ${wx.hazards.tips.map((tip) => `<li>${tip}</li>`).join('')}
+          </ul>
+        </div>
+      `;
+
+      document.getElementById('gameModal').classList.remove('hidden');
+    }
+
+    function closeGameModal() {
+      document.getElementById('gameModal').classList.add('hidden');
+    }
+
+    // =========================================================================
+    // 8. EVENT BINDINGS & PWA SERVICE WORKER REGISTRATION
+    // =========================================================================
+    document.getElementById('searchInput').addEventListener('input', (e) => {
+      state.searchQuery = e.target.value;
+      document.getElementById('clearSearchBtn').classList.toggle('hidden', !state.searchQuery);
+      renderAll();
+    });
+
+    document.getElementById('clearSearchBtn').addEventListener('click', () => {
+      state.searchQuery = '';
+      document.getElementById('searchInput').value = '';
+      document.getElementById('clearSearchBtn').classList.add('hidden');
+      renderAll();
+    });
+
+    document.getElementById('resetFiltersBtn').addEventListener('click', () => {
+      state.searchQuery = '';
+      state.selectedConf = 'All';
+      document.getElementById('searchInput').value = '';
+      document.getElementById('clearSearchBtn').classList.add('hidden');
+      renderAll();
+    });
+
+    document.getElementById('viewCardsBtn').addEventListener('click', () => {
+      state.viewMode = 'cards';
+      document.getElementById('viewCardsBtn').className = 'flex-1 sm:flex-initial px-3.5 py-2 rounded-lg text-xs font-bold transition bg-royal text-white shadow';
+      document.getElementById('viewCompareBtn').className = 'flex-1 sm:flex-initial px-3.5 py-2 rounded-lg text-xs font-bold transition text-slate-400 hover:text-white flex items-center justify-center gap-1.5';
+      renderAll();
+    });
+
+    document.getElementById('viewCompareBtn').addEventListener('click', () => {
+      state.viewMode = 'compare';
+      document.getElementById('viewCompareBtn').className = 'flex-1 sm:flex-initial px-3.5 py-2 rounded-lg text-xs font-bold transition bg-royal text-white shadow flex items-center justify-center gap-1.5';
+      document.getElementById('viewCardsBtn').className = 'flex-1 sm:flex-initial px-3.5 py-2 rounded-lg text-xs font-bold transition text-slate-400 hover:text-white';
+      renderAll();
+    });
+
+    document.getElementById('floatingOpenCompareBtn').addEventListener('click', () => {
+      document.getElementById('viewCompareBtn').click();
+    });
+
+    document.getElementById('floatingClearBtn').addEventListener('click', () => {
+      state.compareIds.clear();
+      persistSelections();
+      renderAll();
+    });
+
+    document.getElementById('clearCompareBtn').addEventListener('click', () => {
+      state.compareIds.clear();
+      persistSelections();
+      renderAll();
+    });
+
+    document.getElementById('autoFillCompareBtn').addEventListener('click', () => {
+      const weekGames = GAMES.filter((g) => g.week === state.selectedWeek).slice(0, 3);
+      state.compareIds = new Set(weekGames.map((g) => g.id));
+      persistSelections();
+      renderAll();
+    });
+
+    document.getElementById('refreshWeatherBtn').addEventListener('click', async () => {
+      const icon = document.getElementById('refreshIcon');
+      icon.classList.add('animate-spin');
+      await renderAll(true);
+      setTimeout(() => icon.classList.remove('animate-spin'), 450);
+    });
+
+    document.getElementById('closeModalBtn').addEventListener('click', closeGameModal);
+    document.getElementById('gameModal').addEventListener('click', (e) => {
+      if (e.target.id === 'gameModal') closeGameModal();
+    });
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') closeGameModal();
+    });
+
+    // Offline & Service Worker Lifecycle Wiring for GitHub Pages
+    (() => {
+      const offlineBanner = document.getElementById('offlineBanner');
+      const updateBanner = document.getElementById('updateBanner');
+      const reloadBtn = document.getElementById('reloadAppBtn');
+      const syncDot = document.getElementById('syncDot');
+      const syncText = document.getElementById('syncText');
+
+      function updateNetworkState() {
+        const online = navigator.onLine;
+        offlineBanner.classList.toggle('hidden', online);
+        if (syncDot && syncText) {
+          syncDot.style.background = online ? '#10B981' : '#F59E0B';
+          syncText.textContent = online ? 'Live Telemetry Synced' : 'Cached Offline';
+        }
+      }
+
+      window.addEventListener('online', () => {
+        updateNetworkState();
+        renderAll(true);
+      });
+      window.addEventListener('offline', updateNetworkState);
+      updateNetworkState();
+
+      if ('serviceWorker' in navigator) {
+        let refreshing = false;
+
+        navigator.serviceWorker.addEventListener('controllerchange', () => {
+          if (refreshing) return;
+          refreshing = true;
+          window.location.reload();
+        });
+
+        window.addEventListener('load', async () => {
+          try {
+            const registration = await navigator.serviceWorker.register('./sw.js', { scope: './' });
+
+            const promptIfWaiting = (worker) => {
+              if (worker && navigator.serviceWorker.controller) {
+                updateBanner.classList.remove('hidden');
+                reloadBtn.onclick = () => worker.postMessage({ type: 'SKIP_WAITING' });
+              }
+            };
+
+            if (registration.waiting) {
+              promptIfWaiting(registration.waiting);
+            }
+
+            registration.addEventListener('updatefound', () => {
+              const newWorker = registration.installing;
+              if (!newWorker) return;
+              newWorker.addEventListener('statechange', () => {
+                if (newWorker.state === 'installed') {
+                  promptIfWaiting(newWorker);
+                }
+              });
+            });
+          } catch (err) {
+            console.warn('GameDayWX service worker registration skipped:', err);
+          }
+        });
+      }
+    })();
+
+    // Initial Boot
+    renderAll();
+  </script>
+</body>
+</html>
